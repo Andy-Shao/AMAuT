@@ -116,7 +116,7 @@ class Embeddings(nn.Module):
             x, features = self.hybrid_model(x)
         else:
             features = None
-        x = self.patch_embeddings(x)  # (B, hidden.n_patches^(1/2), n_patches^(1/2))
+        x = self.patch_embeddings(x)  # (B, hidden, n_patches^(1/2), n_patches^(1/2))
         x = x.flatten(2)
         x = x.transpose(-1, -2)  # (B, n_patches, hidden)
         embeddings = x
@@ -230,7 +230,7 @@ class OutputFormat(nn.Module):
         return x
     
 class AudioTransformer(nn.Module):
-    def __init__(self, config, mel_spec_shape=224, vis=False, in_channels=3):
+    def __init__(self, config, mel_spec_shape=[224, 224], vis=False, in_channels=3):
         super(AudioTransformer, self).__init__()
         self.transformer = Transformer(config, mel_spec_shape, vis, in_channels=in_channels)
         self.output_format = OutputFormat(config)

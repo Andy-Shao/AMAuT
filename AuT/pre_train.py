@@ -12,7 +12,7 @@ import torchvision.transforms as v_transforms
 import torchaudio.transforms as a_transforms
 from torch.utils.data import DataLoader
 
-from lib.toolkit import print_argparse, cal_norm, store_model_structure_to_txt
+from lib.toolkit import print_argparse, store_model_structure_to_txt
 from lib.wavUtils import Components, pad_trunc, time_shift
 from lib.datasets import load_datapath, AudioMINST, ClipDataset
 from AuT.lib.models import AuT, AudioClassifier
@@ -44,7 +44,7 @@ def build_optimizer(args: argparse.Namespace, auT:nn.Module, auC:nn.Module) -> o
     return optimizer
 
 def load_models(args: argparse.Namespace) -> tuple[nn.Module, nn.Module]:
-    auT = AuT(in_channels=1).to(device=args.device)
+    auT = AuT(in_channels=1, mel_spec_shape=[80,94]).to(device=args.device)
     auC = AudioClassifier(
         type=args.classifier, feature_dim=auT.out_features, bottleneck_dim=args.bottleneck, cls_type=args.layer,
         class_num=args.class_num
@@ -64,7 +64,6 @@ if __name__ == '__main__':
     ap.add_argument('--wandb', action='store_true')
 
     ap.add_argument('--seed', type=int, default=2024, help='random seed')
-    ap.add_argument('--normalized', action='store_true')
     ap.add_argument('--test_rate', type=float, default=.3)
 
     ap.add_argument('--max_epoch', type=int, default=200, help='max epoch')
@@ -97,7 +96,7 @@ if __name__ == '__main__':
     ##########################################
 
     wandb_run = wandb.init(
-        project='Audio Classification Pre-Training (AuT)', name=args.dataset, mode='online' if args.wandb else 'disabled',
+        project='AC Pre-Training (AuT)', name=args.dataset, mode='online' if args.wandb else 'disabled',
         config=args, tags=['Audio Classification', args.dataset, 'AuT'])
     
     if args.dataset == 'audio-mnist':
@@ -106,7 +105,7 @@ if __name__ == '__main__':
         sample_rate=48000
         n_mels=80
         n_fft = 4096
-        hop_length= n_fft // 2
+        hop_length= 512 # the number of samples between successive FFT windows
         train_tf = [
             pad_trunc(max_ms=max_ms, sample_rate=sample_rate),
             time_shift(shift_limit=.25, is_random=True, is_bidirection=True),
@@ -114,22 +113,12 @@ if __name__ == '__main__':
             a_transforms.AmplitudeToDB(top_db=80),
         ]
         train_data_paths = load_datapath(root_path=args.dataset_root_path, filter_fn=lambda x: x['accent'] == 'German')
-        if args.normalized:
-            print('calculate train dataset mean and standard deviation')
-            train_dataset = AudioMINST(data_paths=train_data_paths, data_trainsforms=Components(transforms=train_tf), include_rate=False)
-            mean_vals, std_vals = cal_norm(loader=DataLoader(dataset=train_dataset, batch_size=256, shuffle=False, drop_last=False))
-            train_tf.append(v_transforms.Normalize(mean=mean_vals, std=std_vals))
         train_dataset = AudioMINST(data_paths=train_data_paths, data_trainsforms=Components(transforms=train_tf), include_rate=False)
         test_tf = [
             pad_trunc(max_ms=max_ms, sample_rate=sample_rate),
             a_transforms.MelSpectrogram(sample_rate=sample_rate, n_fft=n_fft, n_mels=n_mels, hop_length=hop_length),
             a_transforms.AmplitudeToDB(top_db=80),
         ]
-        if args.normalized:
-            print('calculat test dataset mean and standard deviation')
-            test_dataset = AudioMINST(data_paths=train_data_paths, data_trainsforms=Components(transforms=test_tf), include_rate=False)
-            mean_vals, std_vals = cal_norm(loader=DataLoader(dataset=test_dataset, batch_size=256, shuffle=False, drop_last=False))
-            test_tf.append(v_transforms.Normalize(mean=mean_vals, std=std_vals))
         test_dataset = AudioMINST(data_paths=train_data_paths, data_trainsforms=Components(transforms=test_tf), include_rate=False)
         test_dataset = ClipDataset(dataset=test_dataset, rate=args.test_rate)
     else:
