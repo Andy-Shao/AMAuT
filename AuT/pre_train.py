@@ -17,6 +17,7 @@ from lib.wavUtils import Components, pad_trunc, time_shift
 from lib.datasets import load_datapath, AudioMINST, ClipDataset
 from AuT.lib.models import AuT, AudioClassifier
 from CoNMix.lib.loss import CrossEntropyLabelSmooth
+import AuT.lib.aut_config as aut_config
 
 def lr_scheduler(optimizer: torch.optim.Optimizer, epoch:int, max_epoch:int, gamma=10, power=0.75) -> optim.Optimizer:
     decay = (1 + gamma * epoch / max_epoch) ** (-power)
@@ -44,7 +45,12 @@ def build_optimizer(args: argparse.Namespace, auT:nn.Module, auC:nn.Module) -> o
     return optimizer
 
 def load_models(args: argparse.Namespace) -> tuple[nn.Module, nn.Module]:
-    auT = AuT(in_channels=1, mel_spec_shape=[80,94]).to(device=args.device)
+    mel_spec_shape = [80, 94]
+    config_aut = aut_config.get_r50_l8_config()
+    config_aut.n_classes = 100
+    config_aut.n_skip = 3
+    config_aut.patches.grid = (int(mel_spec_shape[0] / 8), int(mel_spec_shape[1] / 8))
+    auT = AuT(in_channels=1, mel_spec_shape=mel_spec_shape, config=config_aut).to(device=args.device)
     auC = AudioClassifier(
         type=args.classifier, feature_dim=auT.out_features, bottleneck_dim=args.bottleneck, cls_type=args.layer,
         class_num=args.class_num
@@ -96,7 +102,7 @@ if __name__ == '__main__':
     ##########################################
 
     wandb_run = wandb.init(
-        project='AC Pre-Training (AuT)', name=args.dataset, mode='online' if args.wandb else 'disabled',
+        project=f'AC Pre-Training (AuT)', name=args.dataset, mode='online' if args.wandb else 'disabled',
         config=args, tags=['Audio Classification', args.dataset, 'AuT'])
     
     if args.dataset == 'audio-mnist':

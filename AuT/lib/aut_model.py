@@ -94,8 +94,9 @@ class Embeddings(nn.Module):
 
         if config.patches.get("grid") is not None:   # ResNet
             grid_size = config.patches["grid"]
-            patch_size = (mel_spec_shape[0] // 16 // grid_size[0], mel_spec_shape[1] // 16 // grid_size[1])
-            patch_size_real = (patch_size[0] * 16, patch_size[1] * 16)
+            ps = config.patches['size'][0]
+            patch_size = (mel_spec_shape[0] // ps // grid_size[0], mel_spec_shape[1] // ps // grid_size[1])
+            patch_size_real = (patch_size[0] * ps, patch_size[1] * ps)
             n_patches = (mel_spec_shape[0] // patch_size_real[0]) * (mel_spec_shape[1] // patch_size_real[1])  
             self.hybrid = True
         else:
@@ -113,15 +114,13 @@ class Embeddings(nn.Module):
 
     def forward(self, x):
         if self.hybrid:
-            x, features = self.hybrid_model(x)
-        else:
-            features = None
+            x = self.hybrid_model(x)
         x = self.patch_embeddings(x)  # (B, hidden, n_patches^(1/2), n_patches^(1/2))
         x = x.flatten(2)
         x = x.transpose(-1, -2)  # (B, n_patches, hidden)
         embeddings = x
         embeddings = self.dropout(embeddings)
-        return embeddings, features
+        return embeddings
     
 class Block(nn.Module):
     def __init__(self, config, vis):
@@ -170,9 +169,9 @@ class Transformer(nn.Module):
         self.encoder = Encoder(config, vis)
 
     def forward(self, input_ids):
-        embedding_output, features = self.embeddings(input_ids)
+        embedding_output = self.embeddings(input_ids)
         encoded, attn_weights = self.encoder(embedding_output)  # (B, n_patch, hidden)
-        return encoded, attn_weights, features
+        return encoded, attn_weights
     
 class Conv2dReLU(nn.Sequential):
     def __init__(
@@ -219,7 +218,7 @@ class OutputFormat(nn.Module):
         self.config = config
         self.fc= nn.Linear(in_features=config.hidden_size, out_features=2048)
         self.avgpool= nn.AdaptiveAvgPool1d(output_size=1)
-    def forward(self, hidden_states, features=None):
+    def forward(self, hidden_states):
         B, n_patch, hidden = hidden_states.size()  # reshape from (B, n_patch, hidden) to (B, h, w, hidden)
         ### unified multi-scale transformer
         x = hidden_states.permute(0, 2, 1)
@@ -238,9 +237,6 @@ class AudioTransformer(nn.Module):
         self.in_channels=in_channels
 
     def forward(self, x):
-        x0, attn_weights, features = self.transformer(x)  # (B, n_patch, hidden)
-        x1 = self.output_format(x0, features)
-        f=list(reversed(features))
-        f.append(x1)
-        f.insert(0, x)
-        return f,x1
+        x0, attn_weights = self.transformer(x)  # (B, n_patch, hidden)
+        x1 = self.output_format(x0)
+        return x1
