@@ -18,27 +18,31 @@ class MultiHeadAttention(nn.Module):
         self.o = nn.Linear(in_features=d, out_features=d)
 
     def forward(self, x:torch.Tensor, mask=None) -> torch.Tensor:
-        batch_size, channel_size, seq_length, embed_size = x.size()
+        from torch.nn import functional as F
+        batch_size, seq_length, embed_size = x.size()
 
         Q = self.q(x)
         K = self.k(x)
         V = self.v(x)
 
-        Q = Q.view(batch_size, channel_size, seq_length, self.h, self.d_k).transpose(2, 3)
-        K = K.view(batch_size, channel_size, seq_length, self.h, self.d_k).transpose(2, 3)
-        V = V.view(batch_size, channel_size, seq_length, self.h, self.d_v).transpose(2, 3)
+        Q = Q.view(batch_size, seq_length, self.h, self.d_k).transpose(1, 2)
+        K = K.view(batch_size, seq_length, self.h, self.d_k).transpose(1, 2)
+        V = V.view(batch_size, seq_length, self.h, self.d_v).transpose(1, 2)
 
-        attention = self.scaled_dot_product_attention(Q=Q, K=K, V=V, mask=mask)
-        attention = attention.transpose(2, 3).contiguous().view(batch_size, channel_size, seq_length, embed_size)
+        # attention = self.scaled_dot_product_attention(Q=Q, K=K, V=V, mask=mask)
+        attention = F.scaled_dot_product_attention(
+            query=Q, key=K, value=V, is_causal=True
+        )
+        attention = attention.transpose(1, 2).contiguous().view(batch_size, seq_length, embed_size)
 
         return self.o(attention)
 
-    def scaled_dot_product_attention(self, Q, K, V, mask=None) -> torch.Tensor:
-        scores = torch.matmul(Q, K.transpose(-2, -1)) / math.sqrt(self.d_k)
+    # def scaled_dot_product_attention(self, Q, K, V, mask=None) -> torch.Tensor:
+    #     scores = torch.matmul(Q, K.transpose(-2, -1)) / math.sqrt(self.d_k)
 
-        if mask is not None:
-            scores = scores.masked_fill(mask= mask == 0, value=float('-inf'))
+    #     if mask is not None:
+    #         scores = scores.masked_fill(mask= mask == 0, value=float('-inf'))
         
-        attention = torch.softmax(scores, dim=-1)
+    #     attention = torch.softmax(scores, dim=-1)
 
-        return torch.matmul(attention, V)
+    #     return torch.matmul(attention, V)

@@ -10,7 +10,7 @@ from torchvision import transforms as v_transforms
 from torch.utils.data import Dataset, DataLoader
 
 from lib.toolkit import print_argparse
-from lib.wavUtils import pad_trunc, Components, AmplitudeToDB
+from lib.wavUtils import pad_trunc, Components
 from lib.scDataset import SpeechCommandsDataset
 
 def build_dataest(args:argparse.Namespace, tsf:list, mode:str) -> Dataset:
@@ -80,7 +80,7 @@ if __name__ == '__main__':
     tf_array = [
         pad_trunc(max_ms=max_ms, sample_rate=sample_rate),
         a_transforms.MelSpectrogram(sample_rate=sample_rate, n_mels=n_mels, n_fft=n_fft, hop_length=hop_length),
-        AmplitudeToDB(top_db=80, normalize=True, max_output=2)
+        a_transforms.AmplitudeToDB(top_db=80)
     ]
 
     train_dataset = build_dataest(args=args, tsf=tf_array, mode='train')
@@ -90,5 +90,7 @@ if __name__ == '__main__':
 
     for features, labels in train_loader:
         features = torch.permute(features, dims=(0, 1, 3, 2))
+        batch_size, channels, token_num, token_len = features.size()
+        features = features.reshape(batch_size, -1, token_len)
         print(f'features shape is: {features.shape}')
         break
