@@ -48,6 +48,7 @@ class TokenConv(nn.Module):
         self.padding = padding
 
     def forward(self, x:torch.Tensor) -> torch.Tensor:
+        batch_size, token_num, token_len = x.size()
         line_outs = [
             self.lines[i](x) for i in range(self.kernal_size)
         ]
@@ -58,3 +59,9 @@ class TokenConv(nn.Module):
             torch.zeros_like(line_outs[0]).to(x.device) for i in range(self.padding)
         ]
         line_outs = padding_head + line_outs + padding_tail
+
+        batch_id = 0
+        line_outs[0][batch_id][0] + line_outs[1][batch_id][1] + line_outs[2][batch_id][2]
+        line_outs[0][batch_id][1] + line_outs[1][batch_id][2] + line_outs[2][batch_id][3]
+
+        line_outs[0][batch_id][:] + line_outs[1][batch_id][1:] + line_outs[2][batch_id][2:]
