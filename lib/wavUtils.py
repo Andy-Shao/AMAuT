@@ -132,18 +132,3 @@ class DoNothing(nn.Module):
 
     def forward(self, x):
         return x
-    
-class AmplitudeToDB(nn.Module):
-    def __init__(self, top_db:float, normalize:bool=False, max_output:float=1) -> None:
-        super().__init__()
-        from torchaudio import transforms
-        self.top_db = top_db
-        self.max_output = max_output
-        self.normalize = normalize
-        self.model = transforms.AmplitudeToDB(top_db=top_db)
-
-    def forward(self, x:torch.Tensor) -> torch.Tensor:
-        x = self.model(x)
-        if self.normalize:
-            x = x / (self.top_db / self.max_output)
-        return x
