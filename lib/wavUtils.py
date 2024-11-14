@@ -132,3 +132,14 @@ class DoNothing(nn.Module):
 
     def forward(self, x):
         return x
+    
+class AmplitudeToDB(nn.Module):
+    def __init__(self, top_db:float, max_out:float) -> None:
+        from torchaudio import transforms
+        super(AmplitudeToDB, self).__init__()
+        self.model = transforms.AmplitudeToDB(top_db=top_db)
+        self.max_out = max_out
+        self.top_db = top_db
+
+    def forward(self, x:torch.Tensor) -> torch.Tensor:
+        return self.model(x) / (self.top_db // self.max_out)

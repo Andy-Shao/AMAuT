@@ -8,11 +8,36 @@ import torch
 from torchaudio import transforms as a_transforms
 from torchvision import transforms as v_transforms
 from torch.utils.data import Dataset, DataLoader
+from ml_collections import ConfigDict
+import torch.nn as nn
 
 from lib.toolkit import print_argparse
-from lib.wavUtils import pad_trunc, Components
+from lib.wavUtils import pad_trunc, Components, AmplitudeToDB
 from lib.scDataset import SpeechCommandsDataset
-from AuT2.lib.embedding import Embedding
+from AuT2.lib.model import AudioTransform, AudioClassifier
+
+def build_model(args:argparse.Namespace) -> tuple[nn.Module, nn.Module]:
+    config = ConfigDict()
+    config.embedding = ConfigDict()
+    config.embedding.in_token_len = 128
+    config.embedding.channel_num = 1
+    config.transform = ConfigDict()
+    config.transform.embed_size = 1024
+    config.transform.layer_num = 24
+    config.transform.head_num = 16
+    config.transform.atten_drop_rate = .1
+    config.transform.mlp_mid = 1024
+    config.transform.mlp_out = 1024
+    config.transform.mlp_dp_rt = .1
+    config.classifier = ConfigDict()
+    config.classifier.class_num = args.class_num
+    config.classifier.extend_size = 2048
+    config.classifier.convergent_size = 256
+
+    auTmodel = AudioTransform(config=config).to(device=args.device)
+    clsmodel = AudioClassifier(config=config).to(device=args.device)
+
+    return auTmodel, clsmodel
 
 def build_dataest(args:argparse.Namespace, tsf:list, mode:str) -> Dataset:
     if args.dataset == 'speech-commands-random':
@@ -81,7 +106,7 @@ if __name__ == '__main__':
     tf_array = [
         pad_trunc(max_ms=max_ms, sample_rate=sample_rate),
         a_transforms.MelSpectrogram(sample_rate=sample_rate, n_mels=n_mels, n_fft=n_fft, hop_length=hop_length),
-        a_transforms.AmplitudeToDB(top_db=80)
+        AmplitudeToDB(top_db=80., max_out=2.)
     ]
 
     train_dataset = build_dataest(args=args, tsf=tf_array, mode='train')
@@ -89,12 +114,12 @@ if __name__ == '__main__':
         dataset=train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=False, num_workers=args.num_workers
     )
 
-    embedding = Embedding(num_channels=1, token_len=128).to(device=args.device)
+    auTmodel, clsmodel = build_model(args=args)
 
     for features, labels in train_loader:
         features = torch.permute(features, dims=(0, 1, 3, 2))
         batch_size, channels, token_num, token_len = features.size()
         features, labels = features.to(args.device), labels.to(args.device)
-        outputs = embedding(features)
+        outputs = clsmodel(auTmodel(features))
         print(f'outputs shape is:{outputs.shape}')        
         break
