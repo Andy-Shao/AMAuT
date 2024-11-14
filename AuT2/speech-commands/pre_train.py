@@ -12,6 +12,7 @@ from torch.utils.data import Dataset, DataLoader
 from lib.toolkit import print_argparse
 from lib.wavUtils import pad_trunc, Components
 from lib.scDataset import SpeechCommandsDataset
+from AuT2.lib.embedding import Embedding
 
 def build_dataest(args:argparse.Namespace, tsf:list, mode:str) -> Dataset:
     if args.dataset == 'speech-commands-random':
@@ -53,7 +54,7 @@ if __name__ == '__main__':
         args.class_num = 10
         args.dataset_type = 'numbers'
     args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    args.full_output_path = os.path.join(args.output_path, args.dataset, 'AuT', 'pre_train')
+    args.full_output_path = os.path.join(args.output_path, args.dataset, 'AuT2', 'pre_train')
     try:
         os.makedirs(args.full_output_path)
     except:
@@ -88,9 +89,12 @@ if __name__ == '__main__':
         dataset=train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=False, num_workers=args.num_workers
     )
 
+    embedding = Embedding(num_channels=1, token_len=128).to(device=args.device)
+
     for features, labels in train_loader:
         features = torch.permute(features, dims=(0, 1, 3, 2))
         batch_size, channels, token_num, token_len = features.size()
-        features = features.reshape(batch_size, -1, token_len)
-        print(f'features shape is: {features.shape}')
+        features, labels = features.to(args.device), labels.to(args.device)
+        outputs = embedding(features)
+        print(f'outputs shape is:{outputs.shape}')        
         break
