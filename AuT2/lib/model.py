@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 from ml_collections import  ConfigDict
 
-from AuT2.lib.embedding import Embedding
+from .embedding import Embedding
 
 def init_weights(m: nn.Module):
     class_name = m.__class__.__name__
