@@ -14,7 +14,7 @@ import torch.nn as nn
 import torch.optim as optim
 
 from lib.toolkit import print_argparse, store_model_structure_to_txt, relative_path, count_ttl_params
-from lib.wavUtils import pad_trunc, Components, AmplitudeToDB
+from lib.wavUtils import pad_trunc, Components, AmplitudeToDB, time_shift
 from lib.scDataset import SpeechCommandsDataset
 from AuT.lib.model import AudioTransform, AudioClassifier
 from AuT.lib.loss import CrossEntropyLabelSmooth
@@ -67,12 +67,12 @@ def build_model(args:argparse.Namespace) -> tuple[nn.Module, nn.Module]:
 
     return auTmodel, clsmodel
 
-def build_dataest(args:argparse.Namespace, tsf:list, mode:str) -> Dataset:
+def build_dataest(args:argparse.Namespace, tsf:nn.Module, mode:str) -> Dataset:
     if args.dataset == 'speech-commands-random':
         pass
     else:
         dataset = SpeechCommandsDataset(
-            root_path=args.dataset_root_path, mode=mode, include_rate=False, data_tfs=Components(transforms=tsf),
+            root_path=args.dataset_root_path, mode=mode, include_rate=False, data_tfs=tsf,
             data_type=args.dataset_type
         )
     return dataset
@@ -94,6 +94,7 @@ if __name__ == '__main__':
     ap.add_argument('--batch_size', type=int, default=64, help='batch size')
     ap.add_argument('--lr', type=float, default=1e-2, help='learning rate')
     ap.add_argument('--smooth', type=float, default=.1)
+    ap.add_argument('--early_stop', type=int, default=-1)
 
     args = ap.parse_args()
     if args.dataset == 'speech-commands' or args.dataset == 'speech-commands-random':
@@ -130,16 +131,23 @@ if __name__ == '__main__':
     n_mels=128
     n_fft=1024
     hop_length=256
-    tf_array = [
+    tf_array = Components(transforms=[
         pad_trunc(max_ms=max_ms, sample_rate=sample_rate),
+        time_shift(shift_limit=.25, is_random=True, is_bidirection=True),
         a_transforms.MelSpectrogram(sample_rate=sample_rate, n_mels=n_mels, n_fft=n_fft, hop_length=hop_length),
         AmplitudeToDB(top_db=80., max_out=2.)
-    ]
+    ])
 
     train_dataset = build_dataest(args=args, tsf=tf_array, mode='train')
     train_loader = DataLoader(
         dataset=train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=False, num_workers=args.num_workers
     )
+
+    tf_array = Components(transforms=[
+        pad_trunc(max_ms=max_ms, sample_rate=sample_rate),
+        a_transforms.MelSpectrogram(sample_rate=sample_rate, n_mels=n_mels, n_fft=n_fft, hop_length=hop_length),
+        AmplitudeToDB(top_db=80., max_out=2.)
+    ])
     val_dataset = build_dataest(args=args, tsf=tf_array, mode='test')
     val_loader = DataLoader(
         dataset=val_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=args.num_workers
@@ -171,9 +179,9 @@ if __name__ == '__main__':
             batch_size, channels, token_num, token_len = features.size()
             features, labels = features.to(args.device), labels.to(args.device)
 
+            optimizer.zero_grad()
             outputs = clsmodel(auTmodel(features))
             loss = loss_fn(outputs, labels)
-            optimizer.zero_grad()
             loss.backward()
             optimizer.step()
 
@@ -199,8 +207,8 @@ if __name__ == '__main__':
 
             with torch.no_grad():
                 outputs = clsmodel(auTmodel(features))
+                _, preds = torch.max(outputs.detach(), dim=1)
             ttl_val_size += batch_size
-            _, preds = torch.max(outputs.detach(), dim=1)
             ttl_val_corr += (preds == labels).sum().cpu().item()
         print(f'Validation size:{ttl_val_size:.0f}, accuracy:{ttl_val_corr/ttl_val_size * 100.:.2f}%')
 
@@ -210,3 +218,6 @@ if __name__ == '__main__':
             'Train/LR': learning_rate,
             'Val/Accu': ttl_val_corr/ttl_val_size * 100.,
         }, step=epoch, commit=True)
+
+        if args.early_stop >= 0:
+            if args.early_stop == epoch: exit()

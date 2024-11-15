@@ -24,14 +24,15 @@ class AudioClassifier(nn.Module):
         embed_size = config.transform['embed_size']
         extend_size = config.classifier['extend_size']
         convergent_size = config.classifier['convergent_size']
-        self.fc1 = nn.Linear(in_features=embed_size, out_features=extend_size, bias=True)
         self.avgpool = nn.AdaptiveAvgPool1d(output_size=1)
 
-        self.fc2 = nn.Linear(in_features=extend_size, out_features=convergent_size)
-        self.bn = nn.BatchNorm1d(num_features=convergent_size, affine=True)
+        self.fc1 = nn.Linear(in_features=embed_size, out_features=int(embed_size//2), bias=True)
+        self.bn1 = nn.BatchNorm1d(num_features=int(embed_size//2), affine=True, eps=1e-6)
+        self.fc2 = nn.Linear(in_features=int(embed_size//2), out_features=int(embed_size//4))
+        self.bn2 = nn.BatchNorm1d(num_features=int(embed_size//4), affine=True, eps=1e-6)
         self.fc2.apply(init_weights)
         self.fc3 = nn.utils.parametrizations.weight_norm(
-            module=nn.Linear(in_features=convergent_size, out_features=config.classifier['class_num']), name='weight')
+            module=nn.Linear(in_features=int(embed_size//4), out_features=config.classifier['class_num']), name='weight')
         self.fc3.apply(init_weights)
 
     def forward(self, x:torch.Tensor) -> torch.Tensor:
@@ -39,10 +40,9 @@ class AudioClassifier(nn.Module):
         x = x.permute(0, 2, 1)
         x = self.avgpool(x)
         x = x.contiguous().view(batch_size, token_len)
-        x = self.fc1(x)
 
-        x = self.fc2(x)
-        x = self.bn(x)
+        x = self.bn1(self.fc1(x))
+        x = self.bn2(self.fc2(x))
         x = self.fc3(x)
 
         return x
