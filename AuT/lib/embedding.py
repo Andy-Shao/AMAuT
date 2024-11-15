@@ -54,7 +54,7 @@ class MlpBlock(nn.Module):
         self.fout = fout
         self.l1 = StdLine(in_features=fin, out_features=fin, bias=False)
         self.nm1 = nn.LayerNorm(fin, eps=1e-6)
-        self.l2 = StdLine(in_features=fin, out_features=fout, bias=False)
+        self.l2 = StdLine(in_features=fin, out_features=fout, bias=True if fin != fout else False)
         self.nm2 = nn.LayerNorm(fout, eps=1e-6)
         self.l3 = StdLine(in_features=fout, out_features=fout, bias=False)
         self.nm3 = nn.LayerNorm(fout, eps=1e-6)
@@ -71,7 +71,9 @@ class MlpBlock(nn.Module):
     def init_weight(self) -> None:
         nn.init.xavier_uniform_(self.l1.weight)
         nn.init.xavier_uniform_(self.l2.weight)
-        nn.init.xavier_uniform_(self.l3.weight)     
+        nn.init.xavier_uniform_(self.l3.weight)
+        if self.fin != self.fout:
+            nn.init.normal_(self.l2.bias)     
 
 class StdLine(nn.Linear):
     def forward(self, x:torch.Tensor) -> torch.Tensor:
