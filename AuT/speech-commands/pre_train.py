@@ -48,6 +48,7 @@ def build_model(args:argparse.Namespace) -> tuple[nn.Module, nn.Module]:
     config = ConfigDict()
     config.embedding = ConfigDict()
     config.embedding.in_token_len = 128
+    config.embedding.in_token_num = 63
     config.embedding.channel_num = 1
     config.transform = ConfigDict()
     config.transform.embed_size = 1024
@@ -134,7 +135,7 @@ if __name__ == '__main__':
     tf_array = Components(transforms=[
         pad_trunc(max_ms=max_ms, sample_rate=sample_rate),
         time_shift(shift_limit=.25, is_random=True, is_bidirection=True),
-        a_transforms.MelSpectrogram(sample_rate=sample_rate, n_mels=n_mels, n_fft=n_fft, hop_length=hop_length),
+        a_transforms.MelSpectrogram(sample_rate=sample_rate, n_mels=n_mels, n_fft=n_fft, hop_length=hop_length), # 218 x 63
         AmplitudeToDB(top_db=80., max_out=2.)
     ])
 

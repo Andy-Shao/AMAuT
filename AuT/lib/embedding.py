@@ -1,3 +1,5 @@
+from collections import OrderedDict
+
 import torch 
 import torch.nn as nn
 
@@ -7,24 +9,18 @@ class Embedding(nn.Module):
         if num_channels > 1:
             self.blocks = nn.ModuleList([MlpBlock(fin=token_len, fout=token_len) for i in range(num_channels)])
 
-        self.ol1 = nn.ModuleList()
-        for i in range(3):
-            if i == 0:
-                self.ol1.append(MlpBlock(fin=token_len, fout=token_len*2))
-            else:
-                self.ol1.append(MlpBlock(fin=token_len*2, fout=token_len*2))
-        self.ol2 = nn.ModuleList()
-        for i in range(4):
-            if i == 0:
-                self.ol2.append(MlpBlock(fin=token_len*2, fout=token_len*4))
-            else:
-                self.ol2.append(MlpBlock(fin=token_len*4, fout=token_len*4))
-        self.ol3 = nn.ModuleList()
-        for i in range(9):
-            if i == 0:
-                self.ol3.append(MlpBlock(fin=token_len*4, fout=embed_size))
-            else:
-                self.ol3.append(MlpBlock(fin=embed_size, fout=embed_size))
+        self.ol1 = nn.Sequential(OrderedDict(
+            [('l0', MlpBlock(fin=token_len, fout=token_len*2, fmid=token_len))] +
+            [(f'l{i:d}', MlpBlock(fin=token_len*2, fout=token_len*2, fmid=token_len)) for i in range(1,3)]
+        ))
+        self.ol2 = nn.Sequential(OrderedDict(
+            [('l0', MlpBlock(fin=token_len*2, fout=token_len*4, fmid=token_len*2))] +
+            [(f'l{i:d}', MlpBlock(fin=token_len*4, fout=token_len*4, fmid=token_len*2)) for i in range(1,6)]
+        ))
+        self.ol3 = nn.Sequential(OrderedDict(
+            [('l0', MlpBlock(fin=token_len*4, fout=embed_size, fmid=token_len*4))] +
+            [(f'l{i:d}', MlpBlock(fin=embed_size, fout=embed_size, fmid=token_len*4)) for i in range(1,3)]
+        ))
 
         self.drop_out = nn.Dropout(p=.1)
 
@@ -38,35 +34,41 @@ class Embedding(nn.Module):
                     out += self.blocks[i](x[:, i-1:i, :, :])
         else: out = x
         x = out.squeeze_(dim=1)
-        for ol in self.ol1:
-            x = ol(x)
-        for ol in self.ol2:
-            x = ol(x)
-        for ol in self.ol3:
-            x = ol(x)
+        x = self.ol1(x)
+        x = self.ol2(x)
+        x = self.ol3(x)
         x = self.drop_out(x)
         return x
 
 class MlpBlock(nn.Module):
-    def __init__(self, fin:int, fout:int):
+    def __init__(self, fin:int, fout:int, fmid:int):
         super(MlpBlock, self).__init__()
         self.fin = fin
         self.fout = fout
-        self.l1 = StdLine(in_features=fin, out_features=fin, bias=False)
-        self.nm1 = nn.LayerNorm(fin, eps=1e-6)
-        self.l2 = StdLine(in_features=fin, out_features=fout, bias=True if fin != fout else False)
-        self.nm2 = nn.LayerNorm(fout, eps=1e-6)
-        self.l3 = StdLine(in_features=fout, out_features=fout, bias=False)
+        self.l1 = StdLine(in_features=fin, out_features=fmid, bias=False)
+        self.nm1 = nn.LayerNorm(fmid, eps=1e-6)
+        self.l2 = StdLine(in_features=fmid, out_features=fmid, bias=True if fin != fout else False)
+        self.nm2 = nn.LayerNorm(fmid, eps=1e-6)
+        self.l3 = StdLine(in_features=fmid, out_features=fout, bias=False)
         self.nm3 = nn.LayerNorm(fout, eps=1e-6)
         self.gelu = nn.GELU()
+
+        if fin != fout:
+            self.upsample = StdLine(in_features=fin, out_features=fout, bias=False)
+            self.us_nm = nn.LayerNorm(fout, eps=1e-6)
 
         self.init_weight()
 
     def forward(self, x:torch.Tensor) -> torch.Tensor:
+        residural = x
+        if hasattr(self, 'upsample'):
+            residural = self.upsample(residural)
+            residural = self.us_nm(residural)
+
         y = self.gelu(self.nm1(self.l1(x)))
         y = self.gelu(self.nm2(self.l2(y)))
         y = self.nm3(self.l3(y))
-        return self.gelu(y) if self.fin != self.fout else self.gelu(y + x)
+        return self.gelu(residural + y)
 
     def init_weight(self) -> None:
         nn.init.xavier_uniform_(self.l1.weight)
@@ -74,6 +76,8 @@ class MlpBlock(nn.Module):
         nn.init.xavier_uniform_(self.l3.weight)
         if self.fin != self.fout:
             nn.init.normal_(self.l2.bias)     
+        if hasattr(self, 'upsample'):
+            nn.init.xavier_uniform_(self.upsample.weight)
 
 class StdLine(nn.Linear):
     def forward(self, x:torch.Tensor) -> torch.Tensor:
