@@ -1,0 +1,73 @@
+AudioTransform(
+  (embedding): Embedding(
+    (ol1): MlpBlock(
+      (l1): StdLine(in_features=128, out_features=128, bias=False)
+      (nm1): LayerNorm((128,), eps=1e-05, elementwise_affine=True)
+      (l2): StdLine(in_features=128, out_features=256, bias=True)
+      (nm2): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+      (l3): StdLine(in_features=256, out_features=256, bias=False)
+      (nm3): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+      (gelu): GELU(approximate='none')
+    )
+    (ol2): ModuleList(
+      (0): MlpBlock(
+        (l1): StdLine(in_features=256, out_features=256, bias=False)
+        (nm1): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+        (l2): StdLine(in_features=256, out_features=512, bias=True)
+        (nm2): LayerNorm((512,), eps=1e-05, elementwise_affine=True)
+        (l3): StdLine(in_features=512, out_features=512, bias=False)
+        (nm3): LayerNorm((512,), eps=1e-05, elementwise_affine=True)
+        (gelu): GELU(approximate='none')
+      )
+      (1-2): 2 x MlpBlock(
+        (l1): StdLine(in_features=512, out_features=512, bias=False)
+        (nm1): LayerNorm((512,), eps=1e-05, elementwise_affine=True)
+        (l2): StdLine(in_features=512, out_features=512, bias=False)
+        (nm2): LayerNorm((512,), eps=1e-05, elementwise_affine=True)
+        (l3): StdLine(in_features=512, out_features=512, bias=False)
+        (nm3): LayerNorm((512,), eps=1e-05, elementwise_affine=True)
+        (gelu): GELU(approximate='none')
+      )
+    )
+    (ol3): ModuleList(
+      (0): MlpBlock(
+        (l1): StdLine(in_features=512, out_features=512, bias=False)
+        (nm1): LayerNorm((512,), eps=1e-05, elementwise_affine=True)
+        (l2): StdLine(in_features=512, out_features=1024, bias=True)
+        (nm2): LayerNorm((1024,), eps=1e-05, elementwise_affine=True)
+        (l3): StdLine(in_features=1024, out_features=1024, bias=False)
+        (nm3): LayerNorm((1024,), eps=1e-05, elementwise_affine=True)
+        (gelu): GELU(approximate='none')
+      )
+      (1-6): 6 x MlpBlock(
+        (l1): StdLine(in_features=1024, out_features=1024, bias=False)
+        (nm1): LayerNorm((1024,), eps=1e-05, elementwise_affine=True)
+        (l2): StdLine(in_features=1024, out_features=1024, bias=False)
+        (nm2): LayerNorm((1024,), eps=1e-05, elementwise_affine=True)
+        (l3): StdLine(in_features=1024, out_features=1024, bias=False)
+        (nm3): LayerNorm((1024,), eps=1e-05, elementwise_affine=True)
+        (gelu): GELU(approximate='none')
+      )
+    )
+  )
+  (tf_norm): LayerNorm((1024,), eps=1e-06, elementwise_affine=True)
+  (layers): ModuleList(
+    (0-23): 24 x AttentionBlock(
+      (attention_norm): LayerNorm((1024,), eps=1e-06, elementwise_affine=True)
+      (attention): MultiHeadAttention(
+        (q): Linear(in_features=1024, out_features=1024, bias=True)
+        (k): Linear(in_features=1024, out_features=1024, bias=True)
+        (v): Linear(in_features=1024, out_features=1024, bias=True)
+        (atten_drop): Dropout(p=0.1, inplace=False)
+        (o): Linear(in_features=1024, out_features=1024, bias=True)
+      )
+      (ffn): MultilayerPerceptron(
+        (fc1): Linear(in_features=1024, out_features=1024, bias=True)
+        (fc2): Linear(in_features=1024, out_features=1024, bias=True)
+        (act_fn): GELU(approximate='none')
+        (drop_out): Dropout(p=0.1, inplace=False)
+      )
+      (ffn_norm): LayerNorm((1024,), eps=1e-06, elementwise_affine=True)
+    )
+  )
+)

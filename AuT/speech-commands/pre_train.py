@@ -3,6 +3,7 @@ import os
 import numpy as np
 import random
 import wandb
+from tqdm import tqdm
 
 import torch 
 from torchaudio import transforms as a_transforms
@@ -10,11 +11,37 @@ from torchvision import transforms as v_transforms
 from torch.utils.data import Dataset, DataLoader
 from ml_collections import ConfigDict
 import torch.nn as nn
+import torch.optim as optim
 
-from lib.toolkit import print_argparse
+from lib.toolkit import print_argparse, store_model_structure_to_txt, relative_path
 from lib.wavUtils import pad_trunc, Components, AmplitudeToDB
 from lib.scDataset import SpeechCommandsDataset
 from AuT.lib.model import AudioTransform, AudioClassifier
+
+def lr_scheduler(optimizer: torch.optim.Optimizer, epoch:int, max_epoch:int, gamma=10, power=0.75) -> optim.Optimizer:
+    decay = (1 + gamma * epoch / max_epoch) ** (-power)
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = param_group['lr0'] * decay
+        param_group['weight_decay'] = 1e-3
+        param_group['momentum'] = .9
+        param_group['nestenv'] = True
+    return optimizer
+
+def op_copy(optimizer: optim.Optimizer) -> optim.Optimizer:
+    for param_group in optimizer.param_groups:
+        param_group['lr0'] = param_group['lr']
+    return optimizer
+
+def build_optimizer(args: argparse.Namespace, auT:nn.Module, auC:nn.Module) -> optim.Optimizer:
+    param_group = []
+    learning_rate = args.lr
+    for k, v in auT.named_parameters():
+        param_group += [{'params':v, 'lr':learning_rate * .1}]
+    for k, v in auC.named_parameters():
+        param_group += [{'params':v, 'lr':learning_rate}]
+    optimizer = optim.SGD(params=param_group)
+    optimizer = op_copy(optimizer)
+    return optimizer
 
 def build_model(args:argparse.Namespace) -> tuple[nn.Module, nn.Module]:
     config = ConfigDict()
@@ -64,7 +91,7 @@ if __name__ == '__main__':
     # ap.add_argument('--test_rate', type=float, default=.3)
 
     ap.add_argument('--max_epoch', type=int, default=200, help='max epoch')
-    ap.add_argument('--interval', type=int, default=50, help='interval')
+    ap.add_argument('--interval_num', type=int, default=50, help='interval number')
     ap.add_argument('--batch_size', type=int, default=64, help='batch size')
     ap.add_argument('--lr', type=float, default=1e-2, help='learning rate')
 
@@ -79,7 +106,7 @@ if __name__ == '__main__':
         args.class_num = 10
         args.dataset_type = 'numbers'
     args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    args.full_output_path = os.path.join(args.output_path, args.dataset, 'AuT2', 'pre_train')
+    args.full_output_path = os.path.join(args.output_path, args.dataset, 'AuT', 'pre_train')
     try:
         os.makedirs(args.full_output_path)
     except:
@@ -113,13 +140,24 @@ if __name__ == '__main__':
     train_loader = DataLoader(
         dataset=train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=False, num_workers=args.num_workers
     )
+    val_dataset = build_dataest(args=args, tsf=tf_array, mode='test')
+    val_loader = DataLoader(
+        dataset=val_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=args.num_workers
+    )
+
+    interval = args.max_epoch // args.interval_num
 
     auTmodel, clsmodel = build_model(args=args)
+    store_model_structure_to_txt(model=auTmodel, output_path=relative_path(args, 'auTmodel.txt'))
+    store_model_structure_to_txt(model=clsmodel, output_path=relative_path(args, 'clsmodel.txt'))
 
-    for features, labels in train_loader:
-        features = torch.permute(features, dims=(0, 1, 3, 2))
-        batch_size, channels, token_num, token_len = features.size()
-        features, labels = features.to(args.device), labels.to(args.device)
-        outputs = clsmodel(auTmodel(features))
+    for epoch in range(args.max_epoch):
+        print(f"Epoch {epoch+1}/{args.max_epoch}")
+        for features, labels in tqdm(train_loader):
+            features = torch.permute(features, dims=(0, 1, 3, 2))
+            batch_size, channels, token_num, token_len = features.size()
+            features, labels = features.to(args.device), labels.to(args.device)
+
+            outputs = clsmodel(auTmodel(features))
         print(f'outputs shape is:{outputs.shape}')        
         break

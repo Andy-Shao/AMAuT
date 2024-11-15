@@ -47,7 +47,7 @@ class MlpBlock(nn.Module):
         self.nm2 = nn.LayerNorm(fout)
         self.l3 = StdLine(in_features=fout, out_features=fout, bias=False)
         self.nm3 = nn.LayerNorm(fout)
-        self.gelu = nn.functional.gelu
+        self.gelu = nn.GELU()
 
         self.init_weight(norm_bias=True if fin != fout else False)
 

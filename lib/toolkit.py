@@ -1,6 +1,7 @@
 import argparse
 from tqdm import tqdm
 import numpy as np
+import os
 
 import torch 
 import torch.nn as nn
@@ -58,3 +59,6 @@ def parse_mean_std(arg: str):
     for it in arg.split(','):
         ret.append(float(it.strip()))
     return ret
+
+def relative_path(args:argparse.Namespace, *p):
+    return os.path.join(args.full_output_path, *p)

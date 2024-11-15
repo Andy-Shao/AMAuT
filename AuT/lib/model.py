@@ -93,7 +93,7 @@ class MultilayerPerceptron(nn.Module):
         super(MultilayerPerceptron, self).__init__()
         self.fc1 = nn.Linear(in_features=fin, out_features=fmid)
         self.fc2 = nn.Linear(in_features=fmid, out_features=fout)
-        self.act_fn = nn.functional.gelu
+        self.act_fn = nn.GELU()
         self.drop_out = nn.Dropout(p=dp_rt)
 
         self.init_weight()
