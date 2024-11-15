@@ -13,10 +13,11 @@ from ml_collections import ConfigDict
 import torch.nn as nn
 import torch.optim as optim
 
-from lib.toolkit import print_argparse, store_model_structure_to_txt, relative_path
+from lib.toolkit import print_argparse, store_model_structure_to_txt, relative_path, count_ttl_params
 from lib.wavUtils import pad_trunc, Components, AmplitudeToDB
 from lib.scDataset import SpeechCommandsDataset
 from AuT.lib.model import AudioTransform, AudioClassifier
+from AuT.lib.loss import CrossEntropyLabelSmooth
 
 def lr_scheduler(optimizer: torch.optim.Optimizer, epoch:int, max_epoch:int, gamma=10, power=0.75) -> optim.Optimizer:
     decay = (1 + gamma * epoch / max_epoch) ** (-power)
@@ -87,13 +88,12 @@ if __name__ == '__main__':
 
     ap.add_argument('--wandb', action='store_true')
     ap.add_argument('--seed', type=int, default=2024, help='random seed')
-    # ap.add_argument('--normalized', action='store_true')
-    # ap.add_argument('--test_rate', type=float, default=.3)
 
     ap.add_argument('--max_epoch', type=int, default=200, help='max epoch')
     ap.add_argument('--interval_num', type=int, default=50, help='interval number')
     ap.add_argument('--batch_size', type=int, default=64, help='batch size')
     ap.add_argument('--lr', type=float, default=1e-2, help='learning rate')
+    ap.add_argument('--smooth', type=float, default=.1)
 
     args = ap.parse_args()
     if args.dataset == 'speech-commands' or args.dataset == 'speech-commands-random':
@@ -122,7 +122,7 @@ if __name__ == '__main__':
     ##########################################
 
     wandb_run = wandb.init(
-        project='AC Pre-Training (CoNMix)', name=args.dataset, mode='online' if args.wandb else 'disabled',
+        project='AC-PT (AuT)', name=args.dataset, mode='online' if args.wandb else 'disabled',
         config=args, tags=['Audio Classification', args.dataset, 'AuT'])
     
     max_ms=1000
@@ -150,14 +150,63 @@ if __name__ == '__main__':
     auTmodel, clsmodel = build_model(args=args)
     store_model_structure_to_txt(model=auTmodel, output_path=relative_path(args, 'auTmodel.txt'))
     store_model_structure_to_txt(model=clsmodel, output_path=relative_path(args, 'clsmodel.txt'))
+    print(
+        f'auT weight number:{count_ttl_params(auTmodel)}',
+        f', auC weight number:{count_ttl_params(clsmodel)}',
+        f', total weight number:{count_ttl_params(auTmodel) + count_ttl_params(clsmodel)}')
+    loss_fn = CrossEntropyLabelSmooth(num_classes=args.class_num, use_gpu=torch.cuda.is_available(), epsilon=args.smooth)
+    optimizer = build_optimizer(args=args, auT=auTmodel, auC=clsmodel)
 
     for epoch in range(args.max_epoch):
         print(f"Epoch {epoch+1}/{args.max_epoch}")
+
+        print("Training...")
+        ttl_train_size = 0.
+        ttl_train_corr = 0.
+        ttl_train_loss = 0.
+        auTmodel.train()
+        clsmodel.train()
         for features, labels in tqdm(train_loader):
             features = torch.permute(features, dims=(0, 1, 3, 2))
             batch_size, channels, token_num, token_len = features.size()
             features, labels = features.to(args.device), labels.to(args.device)
 
             outputs = clsmodel(auTmodel(features))
-        print(f'outputs shape is:{outputs.shape}')        
-        break
+            loss = loss_fn(outputs, labels)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            ttl_train_size += batch_size
+            _, preds = torch.max(outputs.detach(), dim=1)
+            ttl_train_corr += (preds == labels).sum().cpu().item()
+            ttl_train_loss += loss.cpu().item()
+        print(f'Training size:{ttl_train_size:.0f}, accuracy:{ttl_train_corr/ttl_train_size * 100.:.2f}%') 
+
+        learning_rate = optimizer.param_groups[0]['lr']
+        if epoch % interval == 0 or epoch == args.max_epoch - 1:
+            lr_scheduler(optimizer=optimizer, epoch=epoch, max_epoch=args.max_epoch)
+        
+        print("Validation...")
+        ttl_val_size = 0.
+        ttl_val_corr = 0.
+        auTmodel.eval()
+        clsmodel.eval()
+        for features, labels in tqdm(val_loader):
+            features = torch.permute(features, dims=(0, 1, 3, 2))
+            batch_size, channels, token_num, token_len = features.size()
+            features, labels = features.to(args.device), labels.to(args.device)
+
+            with torch.no_grad():
+                outputs = clsmodel(auTmodel(features))
+            ttl_val_size += batch_size
+            _, preds = torch.max(outputs.detach(), dim=1)
+            ttl_val_corr += (preds == labels).sum().cpu().item()
+        print(f'Validation size:{ttl_val_size:.0f}, accuracy:{ttl_val_corr/ttl_val_size * 100.:.2f}%')
+
+        wandb.log({
+            'Train/Accu': ttl_train_corr/ttl_train_size * 100.,
+            'Train/Loss': ttl_train_loss/ttl_train_size,
+            'Train/LR': learning_rate,
+            'Val/Accu': ttl_val_corr/ttl_val_size * 100.,
+        }, step=epoch, commit=True)

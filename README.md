@@ -60,5 +60,4 @@ from unrecognized ones.
 ## Code Reference
 + [CoNMix](https://github.com/vcl-iisc/CoNMix/tree/master)
 + [TransUNet](https://github.com/Beckschen/TransUNet)
-+ [SHOT](https://github.com/tim-learn/SHOT)
 + [Audio Clasification in TTA](https://github.com/Andy-Shao/Test-time-Adaptation-in-AC)
