@@ -66,7 +66,7 @@ class MlpBlock(nn.Module):
         y = self.gelu(self.nm1(self.l1(x)))
         y = self.gelu(self.nm2(self.l2(y)))
         y = self.nm3(self.l3(y))
-        return x if self.fin != self.fout else self.gelu(y + x)
+        return self.gelu(y) if self.fin != self.fout else self.gelu(y + x)
 
     def init_weight(self) -> None:
         nn.init.xavier_uniform_(self.l1.weight)
