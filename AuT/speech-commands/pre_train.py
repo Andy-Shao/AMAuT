@@ -14,7 +14,7 @@ import torch.nn as nn
 from lib.toolkit import print_argparse
 from lib.wavUtils import pad_trunc, Components, AmplitudeToDB
 from lib.scDataset import SpeechCommandsDataset
-from AuT2.lib.model import AudioTransform, AudioClassifier
+from AuT.lib.model import AudioTransform, AudioClassifier
 
 def build_model(args:argparse.Namespace) -> tuple[nn.Module, nn.Module]:
     config = ConfigDict()
@@ -60,7 +60,7 @@ if __name__ == '__main__':
 
     ap.add_argument('--wandb', action='store_true')
     ap.add_argument('--seed', type=int, default=2024, help='random seed')
-    ap.add_argument('--normalized', action='store_true')
+    # ap.add_argument('--normalized', action='store_true')
     # ap.add_argument('--test_rate', type=float, default=.3)
 
     ap.add_argument('--max_epoch', type=int, default=200, help='max epoch')

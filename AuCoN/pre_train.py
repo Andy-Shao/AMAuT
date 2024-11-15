@@ -15,9 +15,9 @@ from torch.utils.data import DataLoader
 from lib.toolkit import print_argparse, store_model_structure_to_txt
 from lib.wavUtils import Components, pad_trunc, time_shift
 from lib.datasets import load_datapath, AudioMINST, ClipDataset
-from AuT.lib.models import AuT, AudioClassifier
+from AuCoN.lib.models import AuT, AudioClassifier
 from CoNMix.lib.loss import CrossEntropyLabelSmooth
-import AuT.lib.aut_config as aut_config
+import AuCoN.lib.aut_config as aut_config
 
 def lr_scheduler(optimizer: torch.optim.Optimizer, epoch:int, max_epoch:int, gamma=10, power=0.75) -> optim.Optimizer:
     decay = (1 + gamma * epoch / max_epoch) ** (-power)
@@ -86,7 +86,7 @@ if __name__ == '__main__':
 
     args = ap.parse_args()
     args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    args.full_output_path = os.path.join(args.output_path, args.dataset, 'AuT', 'pre_train')
+    args.full_output_path = os.path.join(args.output_path, args.dataset, 'AuCoN', 'pre_train')
     try:
         os.makedirs(args.full_output_path)
     except:
@@ -102,8 +102,8 @@ if __name__ == '__main__':
     ##########################################
 
     wandb_run = wandb.init(
-        project=f'AC Pre-Training (AuT)', name=args.dataset, mode='online' if args.wandb else 'disabled',
-        config=args, tags=['Audio Classification', args.dataset, 'AuT'])
+        project=f'AC-PT (AuCoN)', name=args.dataset, mode='online' if args.wandb else 'disabled',
+        config=args, tags=['Audio Classification', args.dataset, 'AuCoN'])
     
     if args.dataset == 'audio-mnist':
         args.class_num = 10
