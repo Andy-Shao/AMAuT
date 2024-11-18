@@ -51,11 +51,12 @@ def build_model(args:argparse.Namespace) -> tuple[nn.Module, nn.Module]:
     config.embedding.in_token_len = 128
     config.embedding.in_token_num = 63
     config.embedding.channel_num = 1
+    config.embedding.marsked_rate = .1
+    config.embedding.embed_size = 1024
     config.transform = ConfigDict()
-    config.transform.embed_size = 1024
     config.transform.layer_num = 24
     config.transform.head_num = 16
-    config.transform.atten_drop_rate = .1
+    config.transform.atten_drop_rate = 0.
     config.transform.mlp_mid = 1024
     config.transform.mlp_out = 1024
     config.transform.mlp_dp_rt = .1

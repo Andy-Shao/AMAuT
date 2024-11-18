@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 
 class Embedding(nn.Module):
-    def __init__(self, num_channels:int, token_len:int, embed_size:int) -> None:
+    def __init__(self, num_channels:int, token_len:int, embed_size:int, marsked_rate:float=.1) -> None:
         super(Embedding, self).__init__()
         if num_channels > 1:
             self.blocks = nn.ModuleList([MlpBlock(fin=token_len, fout=token_len) for i in range(num_channels)])
@@ -22,7 +22,7 @@ class Embedding(nn.Module):
             [(f'l{i:d}', MlpBlock(fin=embed_size, fout=embed_size, fmid=token_len*4)) for i in range(1,3)]
         ))
 
-        self.drop_out = nn.Dropout(p=.1)
+        self.drop_out = nn.Dropout(p=marsked_rate)
 
     def forward(self, x:torch.Tensor) -> torch.Tensor:
         batch_size, channels, token_num, token_len = x.size()

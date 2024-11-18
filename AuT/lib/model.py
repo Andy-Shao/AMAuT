@@ -21,7 +21,7 @@ def init_weights(m: nn.Module):
 class AudioClassifier(nn.Module):
     def __init__(self, config:ConfigDict) -> None:
         super(AudioClassifier, self).__init__()
-        embed_size = config.transform['embed_size']
+        embed_size = config.embedding['embed_size']
         extend_size = config.classifier['extend_size']
         convergent_size = config.classifier['convergent_size']
         self.avgpool = nn.AdaptiveAvgPool1d(output_size=1)
@@ -50,10 +50,10 @@ class AudioClassifier(nn.Module):
 class AudioTransform(nn.Module):
     def __init__(self, config:ConfigDict) -> None:
         super(AudioTransform, self).__init__()
-        embed_size = config.transform['embed_size']
+        embed_size = config.embedding['embed_size']
         self.embedding = Embedding(
             num_channels=config.embedding['channel_num'], token_len=config.embedding['in_token_len'],
-            embed_size=embed_size
+            embed_size=embed_size, marsked_rate=config.embeding['marsked_rate']
         )
         self.tf_norm = nn.LayerNorm(embed_size, eps=1e-6)
         self.layers = nn.ModuleList([AttentionBlock(config) for _ in range(config.transform['layer_num'])])
