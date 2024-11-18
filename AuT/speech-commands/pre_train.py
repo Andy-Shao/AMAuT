@@ -18,6 +18,7 @@ from lib.wavUtils import pad_trunc, Components, AmplitudeToDB, time_shift
 from lib.scDataset import SpeechCommandsDataset
 from AuT.lib.model import AudioTransform, AudioClassifier
 from AuT.lib.loss import CrossEntropyLabelSmooth
+from AuT.lib.dataset import AudioTokenTransformer
 
 def lr_scheduler(optimizer: torch.optim.Optimizer, epoch:int, max_epoch:int, gamma=10, power=0.75) -> optim.Optimizer:
     decay = (1 + gamma * epoch / max_epoch) ** (-power)
@@ -136,7 +137,8 @@ if __name__ == '__main__':
         pad_trunc(max_ms=max_ms, sample_rate=sample_rate),
         time_shift(shift_limit=.25, is_random=True, is_bidirection=True),
         a_transforms.MelSpectrogram(sample_rate=sample_rate, n_mels=n_mels, n_fft=n_fft, hop_length=hop_length), # 218 x 63
-        AmplitudeToDB(top_db=80., max_out=2.)
+        AmplitudeToDB(top_db=80., max_out=2.),
+        AudioTokenTransformer()
     ])
 
     train_dataset = build_dataest(args=args, tsf=tf_array, mode='train')
@@ -147,7 +149,8 @@ if __name__ == '__main__':
     tf_array = Components(transforms=[
         pad_trunc(max_ms=max_ms, sample_rate=sample_rate),
         a_transforms.MelSpectrogram(sample_rate=sample_rate, n_mels=n_mels, n_fft=n_fft, hop_length=hop_length),
-        AmplitudeToDB(top_db=80., max_out=2.)
+        AmplitudeToDB(top_db=80., max_out=2.),
+        AudioTokenTransformer()
     ])
     val_dataset = build_dataest(args=args, tsf=tf_array, mode='test')
     val_loader = DataLoader(
@@ -202,14 +205,12 @@ if __name__ == '__main__':
         auTmodel.eval()
         clsmodel.eval()
         for features, labels in tqdm(val_loader):
-            features = torch.permute(features, dims=(0, 1, 3, 2))
-            batch_size, channels, token_num, token_len = features.size()
             features, labels = features.to(args.device), labels.to(args.device)
 
             with torch.no_grad():
                 outputs = clsmodel(auTmodel(features))
                 _, preds = torch.max(outputs.detach(), dim=1)
-            ttl_val_size += batch_size
+            ttl_val_size += labels.shape[0]
             ttl_val_corr += (preds == labels).sum().cpu().item()
         print(f'Validation size:{ttl_val_size:.0f}, accuracy:{ttl_val_corr/ttl_val_size * 100.:.2f}%')
 
