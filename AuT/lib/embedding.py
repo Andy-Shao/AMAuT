@@ -6,8 +6,6 @@ import torch.nn as nn
 class Embedding(nn.Module):
     def __init__(self, num_channels:int, token_len:int, embed_size:int, marsked_rate:float=.1) -> None:
         super(Embedding, self).__init__()
-        if num_channels > 1:
-            self.blocks = nn.ModuleList([MlpBlock(fin=token_len, fout=token_len) for i in range(num_channels)])
 
         self.ol1 = nn.Sequential(OrderedDict(
             [('l0', MlpBlock(fin=token_len, fout=token_len*2, fmid=token_len))] +
@@ -25,20 +23,31 @@ class Embedding(nn.Module):
         self.drop_out = nn.Dropout(p=marsked_rate)
 
     def forward(self, x:torch.Tensor) -> torch.Tensor:
-        batch_size, channels, token_num, token_len = x.size()
-        if channels > 1:
-            for i in range(channels):
-                if i == 0:
-                    out = self.blocks[i](x[:, i-1:i, :, :])
-                else:
-                    out += self.blocks[i](x[:, i-1:i, :, :])
-        else: out = x
-        x = out.squeeze_(dim=1)
+        x = build_sentence_by_channel(x)
         x = self.ol1(x)
         x = self.ol2(x)
         x = self.ol3(x)
         x = self.drop_out(x)
         return x
+    
+def build_sentence_by_channel(x:torch.Tensor) -> torch.Tensor:
+    if len(x.shape) == 4:
+        batch_size, channel_num, token_num, token_len = x.size()
+        out = []
+        for i in range(channel_num):
+            out.append(x[:, i, :, :])
+            if i > 1:
+                out.append(torch.zeros(batch_size, 1, token_len))
+        return torch.concat(out, dim=1)
+    elif len(x.shape) == 3:
+        channel_num, token_num, token_len = x.size()
+        out = []
+        for i in range(channel_num):
+            out.append(x[i, :, :])
+            if i>1:
+                out.append(torch.zeros(1, token_len))
+        return torch.concat(out, dim=1)
+    else: raise Exception('No support')
 
 class MlpBlock(nn.Module):
     def __init__(self, fin:int, fout:int, fmid:int):

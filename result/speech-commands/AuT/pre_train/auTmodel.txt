@@ -130,7 +130,7 @@ AudioTransform(
         (q): Linear(in_features=1024, out_features=1024, bias=True)
         (k): Linear(in_features=1024, out_features=1024, bias=True)
         (v): Linear(in_features=1024, out_features=1024, bias=True)
-        (atten_drop): Dropout(p=0.1, inplace=False)
+        (atten_drop): Dropout(p=0.0, inplace=False)
         (o): Linear(in_features=1024, out_features=1024, bias=True)
       )
       (ffn): MultilayerPerceptron(

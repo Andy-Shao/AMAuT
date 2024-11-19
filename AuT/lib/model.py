@@ -53,7 +53,7 @@ class AudioTransform(nn.Module):
         embed_size = config.embedding['embed_size']
         self.embedding = Embedding(
             num_channels=config.embedding['channel_num'], token_len=config.embedding['in_token_len'],
-            embed_size=embed_size, marsked_rate=config.embeding['marsked_rate']
+            embed_size=embed_size, marsked_rate=config.embedding['marsked_rate']
         )
         self.tf_norm = nn.LayerNorm(embed_size, eps=1e-6)
         self.layers = nn.ModuleList([AttentionBlock(config) for _ in range(config.transform['layer_num'])])
@@ -68,7 +68,7 @@ class AudioTransform(nn.Module):
 class AttentionBlock(nn.Module):
     def __init__(self, config:ConfigDict) -> None:
         super(AttentionBlock, self).__init__()
-        embed_size = config.transform['embed_size']
+        embed_size = config.embedding['embed_size']
         self.attention_norm = nn.LayerNorm(embed_size, eps=1e-6)
         self.attention = MultiHeadAttention(
             d=embed_size, h=config.transform['head_num'], at_dp=config.transform['atten_drop_rate'])

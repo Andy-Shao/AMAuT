@@ -7,14 +7,13 @@ from tqdm import tqdm
 
 import torch 
 from torchaudio import transforms as a_transforms
-from torchvision import transforms as v_transforms
 from torch.utils.data import Dataset, DataLoader
 from ml_collections import ConfigDict
 import torch.nn as nn
 import torch.optim as optim
 
 from lib.toolkit import print_argparse, store_model_structure_to_txt, relative_path, count_ttl_params
-from lib.wavUtils import pad_trunc, Components, AmplitudeToDB, time_shift
+from lib.wavUtils import pad_trunc, Components, AmplitudeToDB
 from lib.scDataset import SpeechCommandsDataset
 from AuT.lib.model import AudioTransform, AudioClassifier
 from AuT.lib.loss import CrossEntropyLabelSmooth
@@ -136,8 +135,7 @@ if __name__ == '__main__':
     hop_length=256
     tf_array = Components(transforms=[
         pad_trunc(max_ms=max_ms, sample_rate=sample_rate),
-        time_shift(shift_limit=.25, is_random=True, is_bidirection=True),
-        a_transforms.MelSpectrogram(sample_rate=sample_rate, n_mels=n_mels, n_fft=n_fft, hop_length=hop_length), # 218 x 63
+        a_transforms.MelSpectrogram(sample_rate=sample_rate, n_mels=n_mels, n_fft=n_fft, hop_length=hop_length), # 128 x 63
         AmplitudeToDB(top_db=80., max_out=2.),
         AudioTokenTransformer()
     ])
@@ -180,8 +178,6 @@ if __name__ == '__main__':
         auTmodel.train()
         clsmodel.train()
         for features, labels in tqdm(train_loader):
-            features = torch.permute(features, dims=(0, 1, 3, 2))
-            batch_size, channels, token_num, token_len = features.size()
             features, labels = features.to(args.device), labels.to(args.device)
 
             optimizer.zero_grad()
@@ -190,7 +186,7 @@ if __name__ == '__main__':
             loss.backward()
             optimizer.step()
 
-            ttl_train_size += batch_size
+            ttl_train_size += labels.shape[0]
             _, preds = torch.max(outputs.detach(), dim=1)
             ttl_train_corr += (preds == labels).sum().cpu().item()
             ttl_train_loss += loss.cpu().item()
