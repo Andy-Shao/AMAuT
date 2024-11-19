@@ -1,64 +1,61 @@
 from typing import Any
-from collections import OrderedDict
 
 import torch 
 import torch.nn as nn
 
-from .embedding import MlpBlock
-
 class Embedding(nn.Module):
-    def __init__(self, num_channels:int, token_len:int, embed_size:int) -> None:
+    def __init__(self, num_channels:int, embed_size:int, marsked_rate:float) -> None:
         super(Embedding, self).__init__()
-
-        self.ext_lin1 = nn.ModuleList([MlpBlock(fin=token_len, fout=token_len) for _ in range(2)])
-        
-        self.ext_lin2 = nn.ModuleList()
-        for i in range(5):
-            if i == 0:
-                self.ext_lin2.append(MlpBlock(fin=token_len, fout=embed_size))
-            else:
-                self.ext_lin2.append(MlpBlock(fin=embed_size, fout=embed_size))
+        self.restnet = RestNet50(cin=num_channels, embed_size=embed_size)
+        self.drop_out = nn.Dropout(p=marsked_rate)
 
     def forward(self, x:torch.Tensor) -> torch.Tensor:
-        for lin in self.ext_lin1:
-            x = lin(x)
-        for lin in self.ext_lin2:
-            x = lin(x)
+        x = x.flatten(start_dim=2)
+        x = self.restnet(x)
+        x = x.transpose(2, 1)
+        x = self.drop_out(x)
 
         return x
     
-class RestNet(nn.Module):
-    def __init__(self, cin:int) -> None:
-        super(RestNet, self).__init__()
-        width = 64
-        self.root = nn.Sequential(OrderedDict([
-            ('conv', StdConv2d(in_channels=cin, out_channels=width, kernel_size=7, stride=2, bias=False, padding=3)),
-            ('gn', nn.GroupNorm(32, width, eps=1e-6)),
-            ('relu', nn.ReLU(inplace=True)),
-            # ('max_pool', nn.MaxPool2d(kernel_size=3, stride=2, padding=0))
-        ]))
+class RestNet50(nn.Module):
+    def __init__(self, cin:int, embed_size:int) -> None:
+        super(RestNet50, self).__init__()
+        width = embed_size // 16
+        self.root = nn.Sequential(
+            StdConv1d(in_channels=cin, out_channels=width, kernel_size=49, stride=4, bias=False, padding=3),
+            nn.GroupNorm(32, width, eps=1e-6),
+            nn.ReLU(),
+            nn.MaxPool1d(kernel_size=9, stride=2, padding=0)
+        )
 
-        self.body = nn.Sequential(OrderedDict(
-            ('block1', nn.Sequential(OrderedDict(
-                [('unit1', RestNetBlock(cin=width, cout=width*4, cmid=width))] +
-                [(f'unit{i:d}', RestNetBlock(cin=width*4, cout=width*4, cmid=width)) for i in range(7)]
-            ))),
-            ('block2', nn.Sequential(OrderedDict(
-                [('unit1', RestNetBlock(cin=width*4, cout=width*16, cmid=width*4, stride=2))]+
-                [(f'unit{i:d}', RestNetBlock(cin=width*16, cout=width*16, cmid=width*4)) for i in range(9)]
-            )))
-        ))
+        self.layer1 = nn.ModuleList()
+        self.layer1.append(RestNetBlock(cin=width, cout=width*2, cmid=width))
+        for _ in range(2): self.layer1.append(RestNetBlock(cin=width*2, cout=width*2, cmid=width))
+
+        self.layer2 = nn.ModuleList()
+        self.layer2.append(RestNetBlock(cin=width*2, cout=width*4, cmid=width*2, stride=2))
+        for _ in range(3): self.layer2.append(RestNetBlock(cin=width*4, cout=width*4, cmid=width*2))
+
+        self.layer3 = nn.ModuleList()
+        self.layer3.append(RestNetBlock(cin=width*4, cout=width*8, cmid=width*2, stride=2))
+        for _ in range(5): self.layer3.append(RestNetBlock(cin=width*8, cout=width*8, cmid=width*2))
+
+        self.layer4 = nn.ModuleList()
+        self.layer4.append(RestNetBlock(cin=width*8, cout=width*16, cmid=width*8, stride=2))
+        for _ in range(2): self.layer4.append(RestNetBlock(cin=width*16, cout=width*16, cmid=width*8))
 
 
     def forward(self, x:torch.Tensor) -> torch.Tensor:
-        #TODO
+        x = self.root(x)
+        for l in self.layer1: x = l(x)
+        for l in self.layer2: x = l(x)
+        for l in self.layer3: x = l(x)
+        for l in self.layer4: x = l(x)
         return x
 
 class RestNetBlock(nn.Module):
-    def __init__(self, cin:int, cout=None, cmid=None, stride=1) -> None:
+    def __init__(self, cin:int, cout:int, cmid:int, stride=1) -> None:
         super(RestNetBlock, self).__init__()
-        cout = cout or cin
-        cmid = cmid or cin//4
 
         self.conv1 = conv1x1(cin, cmid, bias=False)
         self.gn1 = nn.GroupNorm(num_groups=32, num_channels=cmid, eps=1e-6)
@@ -87,26 +84,25 @@ class RestNetBlock(nn.Module):
         y = self.relu(residual + y)
         return y
 
-def conv1x1(cin:int, cout:int, stride=1, groups=1, bias=False) -> nn.Conv2d:
-    return StdConv2d(
-        in_channels=cin, out_channels=cout, kernel_size=1, stride=1, padding=0, bias=bias,
-        groups=groups
+def conv1x1(cin:int, cout:int, stride=1, bias=False) -> nn.Conv2d:
+    return StdConv1d(
+        in_channels=cin, out_channels=cout, kernel_size=1, stride=stride, padding=0, bias=bias
     )
 
 def conv3x3(cin:int, cout:int, stride=1, groups=1, bias=False) -> nn.Conv2d:
-    return StdConv2d(
-        in_channels=cin, out_channels=cout, kernel_size=3, stride=1, padding=1, bias=bias,
+    return StdConv1d(
+        in_channels=cin, out_channels=cout, kernel_size=9, stride=stride, padding=4, bias=bias,
         groups=groups
     )
 
-class StdConv2d(nn.Conv2d):
+class StdConv1d(nn.Conv1d):
     def forward(self, x) -> Any:
         import torch.nn.functional as F
 
         w = self.weight
-        var, mean = torch.var_mean(w, dim=[1, 2, 3], keepdim=True, unbiased=False)
+        var, mean = torch.var_mean(w, dim=[1, 2], keepdim=True, unbiased=False)
         w = (w - mean) / torch.sqrt(var + 1e-5)
-        return F.conv2d(
+        return F.conv1d(
             input=x, weight=w, bias=self.bias, stride=self.stride, padding=self.padding, 
             dilation=self.dilation, groups=self.groups
         )

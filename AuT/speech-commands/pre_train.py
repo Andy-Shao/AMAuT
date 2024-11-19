@@ -13,7 +13,7 @@ import torch.nn as nn
 import torch.optim as optim
 
 from lib.toolkit import print_argparse, store_model_structure_to_txt, relative_path, count_ttl_params
-from lib.wavUtils import pad_trunc, Components, AmplitudeToDB
+from lib.wavUtils import pad_trunc, Components, AmplitudeToDB, DoNothing
 from lib.scDataset import SpeechCommandsDataset
 from AuT.lib.model import AudioTransform, AudioClassifier
 from AuT.lib.loss import CrossEntropyLabelSmooth
@@ -50,8 +50,9 @@ def build_model(args:argparse.Namespace) -> tuple[nn.Module, nn.Module]:
     config.embedding.in_token_len = 128
     config.embedding.in_token_num = 63
     config.embedding.channel_num = 1
-    config.embedding.marsked_rate = .1
+    config.embedding.marsked_rate = .15
     config.embedding.embed_size = 1024
+    config.embedding.mode = args.embed_mode # conv or linear
     config.transform = ConfigDict()
     config.transform.layer_num = 24
     config.transform.head_num = 16
@@ -97,6 +98,7 @@ if __name__ == '__main__':
     ap.add_argument('--lr', type=float, default=1e-2, help='learning rate')
     ap.add_argument('--smooth', type=float, default=.1)
     ap.add_argument('--early_stop', type=int, default=-1)
+    ap.add_argument('--embed_mode', type=str, default='linear', choices=['conv', 'linear'])
 
     args = ap.parse_args()
     if args.dataset == 'speech-commands' or args.dataset == 'speech-commands-random':
@@ -137,7 +139,7 @@ if __name__ == '__main__':
         pad_trunc(max_ms=max_ms, sample_rate=sample_rate),
         a_transforms.MelSpectrogram(sample_rate=sample_rate, n_mels=n_mels, n_fft=n_fft, hop_length=hop_length), # 128 x 63
         AmplitudeToDB(top_db=80., max_out=2.),
-        AudioTokenTransformer()
+        AudioTokenTransformer() if args.embed_mode == 'linear' else DoNothing()
     ])
 
     train_dataset = build_dataest(args=args, tsf=tf_array, mode='train')
@@ -149,7 +151,7 @@ if __name__ == '__main__':
         pad_trunc(max_ms=max_ms, sample_rate=sample_rate),
         a_transforms.MelSpectrogram(sample_rate=sample_rate, n_mels=n_mels, n_fft=n_fft, hop_length=hop_length),
         AmplitudeToDB(top_db=80., max_out=2.),
-        AudioTokenTransformer()
+        AudioTokenTransformer() if args.embed_mode == 'linear' else DoNothing()
     ])
     val_dataset = build_dataest(args=args, tsf=tf_array, mode='test')
     val_loader = DataLoader(
@@ -219,4 +221,4 @@ if __name__ == '__main__':
         }, step=epoch, commit=True)
 
         if args.early_stop >= 0:
-            if args.early_stop == epoch: exit()
+            if args.early_stop == epoch-1: exit()

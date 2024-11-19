@@ -5,6 +5,7 @@ import torch.nn as nn
 from ml_collections import  ConfigDict
 
 from .embedding import Embedding
+from .rest_embed import Embedding as RestEmbedding
 
 def init_weights(m: nn.Module):
     class_name = m.__class__.__name__
@@ -51,10 +52,18 @@ class AudioTransform(nn.Module):
     def __init__(self, config:ConfigDict) -> None:
         super(AudioTransform, self).__init__()
         embed_size = config.embedding['embed_size']
-        self.embedding = Embedding(
-            num_channels=config.embedding['channel_num'], token_len=config.embedding['in_token_len'],
-            embed_size=embed_size, marsked_rate=config.embedding['marsked_rate']
-        )
+        embed_mode = config.embedding['mode']
+        if embed_mode == 'linear':
+            self.embedding = Embedding(
+                token_len=config.embedding['in_token_len'],
+                embed_size=embed_size, marsked_rate=config.embedding['marsked_rate']
+            )
+        elif embed_mode == 'conv':
+            self.embedding = RestEmbedding(
+                num_channels=config.embedding['channel_num'], embed_size=embed_size,
+                marsked_rate=config.embedding['marsked_rate']
+            )
+        else: raise Exception('No support')
         self.tf_norm = nn.LayerNorm(embed_size, eps=1e-6)
         self.layers = nn.ModuleList([AttentionBlock(config) for _ in range(config.transform['layer_num'])])
 

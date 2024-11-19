@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 
 class Embedding(nn.Module):
-    def __init__(self, num_channels:int, token_len:int, embed_size:int, marsked_rate:float=.1) -> None:
+    def __init__(self, token_len:int, embed_size:int, marsked_rate:float=.1) -> None:
         super(Embedding, self).__init__()
 
         self.ol1 = nn.Sequential(OrderedDict(
