@@ -7,17 +7,19 @@ class Embedding(nn.Module):
     def __init__(self, token_len:int, embed_size:int, marsked_rate:float=.1) -> None:
         super(Embedding, self).__init__()
 
+        width = embed_size // 4
+
         self.ol1 = nn.Sequential(OrderedDict(
-            [('l0', MlpBlock(fin=token_len, fout=token_len*2, fmid=token_len))] +
-            [(f'l{i:d}', MlpBlock(fin=token_len*2, fout=token_len*2, fmid=token_len)) for i in range(1,3)]
+            [('l0', MlpBlock(fin=token_len, fout=width, fmid=token_len))] +
+            [(f'l{i:d}', MlpBlock(fin=width, fout=width, fmid=token_len)) for i in range(1,3)]
         ))
         self.ol2 = nn.Sequential(OrderedDict(
-            [('l0', MlpBlock(fin=token_len*2, fout=token_len*4, fmid=token_len*2))] +
-            [(f'l{i:d}', MlpBlock(fin=token_len*4, fout=token_len*4, fmid=token_len*2)) for i in range(1,6)]
+            [('l0', MlpBlock(fin=width, fout=width*2, fmid=width))] +
+            [(f'l{i:d}', MlpBlock(fin=width*2, fout=width*2, fmid=width)) for i in range(1,6)]
         ))
         self.ol3 = nn.Sequential(OrderedDict(
-            [('l0', MlpBlock(fin=token_len*4, fout=embed_size, fmid=token_len*4))] +
-            [(f'l{i:d}', MlpBlock(fin=embed_size, fout=embed_size, fmid=token_len*4)) for i in range(1,3)]
+            [('l0', MlpBlock(fin=width*2, fout=embed_size, fmid=width*2))] +
+            [(f'l{i:d}', MlpBlock(fin=embed_size, fout=embed_size, fmid=width*2)) for i in range(1,3)]
         ))
 
         self.drop_out = nn.Dropout(p=marsked_rate)

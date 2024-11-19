@@ -41,8 +41,8 @@ class RestNet50(nn.Module):
         for _ in range(5): self.layer3.append(RestNetBlock(cin=width*8, cout=width*8, cmid=width*2))
 
         self.layer4 = nn.ModuleList()
-        self.layer4.append(RestNetBlock(cin=width*8, cout=width*16, cmid=width*8, stride=2))
-        for _ in range(2): self.layer4.append(RestNetBlock(cin=width*16, cout=width*16, cmid=width*8))
+        self.layer4.append(RestNetBlock(cin=width*8, cout=embed_size, cmid=width*8, stride=2))
+        for _ in range(2): self.layer4.append(RestNetBlock(cin=embed_size, cout=embed_size, cmid=width*8))
 
 
     def forward(self, x:torch.Tensor) -> torch.Tensor:
