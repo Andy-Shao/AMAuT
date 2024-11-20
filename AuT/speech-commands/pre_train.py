@@ -221,4 +221,4 @@ if __name__ == '__main__':
         }, step=epoch, commit=True)
 
         if args.early_stop >= 0:
-            if args.early_stop == epoch-1: exit()
+            if args.early_stop == epoch+1: exit()
