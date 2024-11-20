@@ -47,8 +47,8 @@ def build_optimizer(args: argparse.Namespace, auT:nn.Module, auC:nn.Module) -> o
 def build_model(args:argparse.Namespace) -> tuple[nn.Module, nn.Module]:
     config = ConfigDict()
     config.embedding = ConfigDict()
-    config.embedding.in_token_len = 128
-    config.embedding.in_token_num = 63
+    config.embedding.in_token_len = 81
+    config.embedding.in_token_num = 80
     config.embedding.channel_num = 1
     config.embedding.marsked_rate = .15
     config.embedding.embed_size = 1024
@@ -132,12 +132,12 @@ if __name__ == '__main__':
     
     max_ms=1000
     sample_rate=16000
-    n_mels=128
+    n_mels=80
     n_fft=1024
-    hop_length=256
+    hop_length=200
     tf_array = Components(transforms=[
         pad_trunc(max_ms=max_ms, sample_rate=sample_rate),
-        a_transforms.MelSpectrogram(sample_rate=sample_rate, n_mels=n_mels, n_fft=n_fft, hop_length=hop_length), # 128 x 63
+        a_transforms.MelSpectrogram(sample_rate=sample_rate, n_mels=n_mels, n_fft=n_fft, hop_length=hop_length), # 80 x 81
         AmplitudeToDB(top_db=80., max_out=2.),
         AudioTokenTransformer() if args.embed_mode == 'linear' else DoNothing()
     ])
