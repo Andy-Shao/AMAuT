@@ -222,3 +222,6 @@ if __name__ == '__main__':
 
         if args.early_stop >= 0:
             if args.early_stop == epoch+1: exit()
+
+    torch.save(auTmodel, relative_path(args, 'AuT.txt'))
+    torch.save(clsmodel, relative_path(args, 'AuT-Cls.txt'))
