@@ -11,7 +11,6 @@ class Embedding(nn.Module):
 
     def forward(self, x:torch.Tensor) -> torch.Tensor:
         batch_size, channel_num, token_num, token_len = x.size()
-        # x = x.flatten(start_dim=2)
         x = x.reshape(batch_size, -1, token_len)
         x = self.restnet(x)
         x = x.transpose(2, 1)
