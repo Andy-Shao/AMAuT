@@ -10,7 +10,9 @@ class Embedding(nn.Module):
         self.drop_out = nn.Dropout(p=marsked_rate)
 
     def forward(self, x:torch.Tensor) -> torch.Tensor:
-        x = x.flatten(start_dim=2)
+        batch_size, channel_num, token_num, token_len = x.size()
+        # x = x.flatten(start_dim=2)
+        x = x.reshape(batch_size, -1, token_len)
         x = self.restnet(x)
         x = x.transpose(2, 1)
         x = self.drop_out(x)
@@ -22,35 +24,25 @@ class RestNet50(nn.Module):
         super(RestNet50, self).__init__()
         width = embed_size // 16
         self.root = nn.Sequential(
-            StdConv1d(in_channels=cin, out_channels=width, kernel_size=49, stride=4, bias=False, padding=3),
+            StdConv1d(in_channels=cin, out_channels=width, kernel_size=7, stride=2, bias=False, padding=3),
             nn.GroupNorm(32, width, eps=1e-6),
             nn.ReLU(),
-            nn.MaxPool1d(kernel_size=9, stride=2, padding=0)
+            # nn.MaxPool1d(kernel_size=3, stride=2, padding=0)
         )
 
         self.layer1 = nn.ModuleList()
-        self.layer1.append(RestNetBlock(cin=width, cout=width*2, cmid=width))
-        for _ in range(2): self.layer1.append(RestNetBlock(cin=width*2, cout=width*2, cmid=width))
+        self.layer1.append(RestNetBlock(cin=width, cout=width*4, cmid=width))
+        for _ in range(6): self.layer1.append(RestNetBlock(cin=width*4, cout=width*4, cmid=width))
 
         self.layer2 = nn.ModuleList()
-        self.layer2.append(RestNetBlock(cin=width*2, cout=width*4, cmid=width*2, stride=2))
-        for _ in range(3): self.layer2.append(RestNetBlock(cin=width*4, cout=width*4, cmid=width*2))
-
-        self.layer3 = nn.ModuleList()
-        self.layer3.append(RestNetBlock(cin=width*4, cout=width*8, cmid=width*2, stride=2))
-        for _ in range(5): self.layer3.append(RestNetBlock(cin=width*8, cout=width*8, cmid=width*2))
-
-        self.layer4 = nn.ModuleList()
-        self.layer4.append(RestNetBlock(cin=width*8, cout=embed_size, cmid=width*8, stride=2))
-        for _ in range(2): self.layer4.append(RestNetBlock(cin=embed_size, cout=embed_size, cmid=width*8))
+        self.layer2.append(RestNetBlock(cin=width*4, cout=width*16, cmid=width*4, stride=2))
+        for _ in range(8): self.layer2.append(RestNetBlock(cin=width*16, cout=width*16, cmid=width*4))
 
 
     def forward(self, x:torch.Tensor) -> torch.Tensor:
         x = self.root(x)
         for l in self.layer1: x = l(x)
         for l in self.layer2: x = l(x)
-        for l in self.layer3: x = l(x)
-        for l in self.layer4: x = l(x)
         return x
 
 class RestNetBlock(nn.Module):
@@ -91,7 +83,7 @@ def conv1x1(cin:int, cout:int, stride=1, bias=False) -> nn.Conv2d:
 
 def conv3x3(cin:int, cout:int, stride=1, groups=1, bias=False) -> nn.Conv2d:
     return StdConv1d(
-        in_channels=cin, out_channels=cout, kernel_size=9, stride=stride, padding=4, bias=bias,
+        in_channels=cin, out_channels=cout, kernel_size=3, stride=stride, padding=1, bias=bias,
         groups=groups
     )
 

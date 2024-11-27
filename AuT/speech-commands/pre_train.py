@@ -49,7 +49,7 @@ def build_model(args:argparse.Namespace) -> tuple[nn.Module, nn.Module]:
     config.embedding = ConfigDict()
     config.embedding.in_token_len = 81
     config.embedding.in_token_num = 80
-    config.embedding.channel_num = 1
+    config.embedding.channel_num = 80
     config.embedding.marsked_rate = .15
     config.embedding.embed_size = 1024
     config.embedding.mode = args.embed_mode # conv or linear
