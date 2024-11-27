@@ -7,6 +7,13 @@ from ml_collections import  ConfigDict
 from .embedding import Embedding
 from .rest_embed import Embedding as RestEmbedding
 
+def cal_model_tag(dataset_tag:str, embed_mode:str) -> str:
+    assert dataset_tag in ['speech-commands', 'speech-commands-purity', 'speech-commands-random', 'speech-commands-numbers'], 'No support'
+    model_tag = embed_mode
+    if dataset_tag == 'speech-commands':
+        model_tag += '-SC'
+    return model_tag
+
 def init_weights(m: nn.Module):
     class_name = m.__class__.__name__
     if class_name.find('Conv2d') != -1 or class_name.find('ConvTranspose2d') != -1:
@@ -58,7 +65,7 @@ class AudioTransform(nn.Module):
                 token_len=config.embedding['in_token_len'],
                 embed_size=embed_size, marsked_rate=config.embedding['marsked_rate']
             )
-        elif embed_mode == 'conv':
+        elif embed_mode == 'restnet':
             self.embedding = RestEmbedding(
                 num_channels=config.embedding['channel_num'], embed_size=embed_size,
                 marsked_rate=config.embedding['marsked_rate']

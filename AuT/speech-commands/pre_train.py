@@ -15,7 +15,7 @@ import torch.optim as optim
 from lib.toolkit import print_argparse, store_model_structure_to_txt, relative_path, count_ttl_params
 from lib.wavUtils import pad_trunc, Components, AmplitudeToDB, DoNothing
 from lib.scDataset import SpeechCommandsDataset
-from AuT.lib.model import AudioTransform, AudioClassifier
+from AuT.lib.model import AudioTransform, AudioClassifier, cal_model_tag
 from AuT.lib.loss import CrossEntropyLabelSmooth
 from AuT.lib.dataset import AudioTokenTransformer
 
@@ -98,7 +98,7 @@ if __name__ == '__main__':
     ap.add_argument('--lr', type=float, default=1e-2, help='learning rate')
     ap.add_argument('--smooth', type=float, default=.1)
     ap.add_argument('--early_stop', type=int, default=-1)
-    ap.add_argument('--embed_mode', type=str, default='linear', choices=['conv', 'linear'])
+    ap.add_argument('--embed_mode', type=str, default='linear', choices=['restnet', 'linear'])
 
     args = ap.parse_args()
     if args.dataset == 'speech-commands' or args.dataset == 'speech-commands-random':
@@ -127,7 +127,7 @@ if __name__ == '__main__':
     ##########################################
 
     wandb_run = wandb.init(
-        project='AC-PT (AuT)', name=args.dataset, mode='online' if args.wandb else 'disabled',
+        project='AC-PT (AuT)', name=cal_model_tag(dataset_tag=args.dataset, embed_mode=args.embed_mode), mode='online' if args.wandb else 'disabled',
         config=args, tags=['Audio Classification', args.dataset, 'AuT'])
     
     max_ms=1000
