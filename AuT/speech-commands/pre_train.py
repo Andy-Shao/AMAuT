@@ -170,6 +170,7 @@ if __name__ == '__main__':
     loss_fn = CrossEntropyLabelSmooth(num_classes=args.class_num, use_gpu=torch.cuda.is_available(), epsilon=args.smooth)
     optimizer = build_optimizer(args=args, auT=auTmodel, auC=clsmodel)
 
+    max_val_accu = 0.
     for epoch in range(args.max_epoch):
         print(f"Epoch {epoch+1}/{args.max_epoch}")
 
@@ -211,7 +212,12 @@ if __name__ == '__main__':
                 _, preds = torch.max(outputs.detach(), dim=1)
             ttl_val_size += labels.shape[0]
             ttl_val_corr += (preds == labels).sum().cpu().item()
-        print(f'Validation size:{ttl_val_size:.0f}, accuracy:{ttl_val_corr/ttl_val_size * 100.:.2f}%')
+        ttl_val_accu = ttl_val_corr/ttl_val_size * 100.
+        print(f'Validation size:{ttl_val_size:.0f}, accuracy:{ttl_val_accu:.2f}%')
+        if max_val_accu < ttl_val_accu:
+            max_val_accu = ttl_val_accu
+            torch.save(auTmodel.state_dict(), relative_path(args, 'AuT.pt'))
+            torch.save(clsmodel.state_dict(), relative_path(args, 'AuT-Cls.pt'))
 
         wandb.log({
             'Train/Accu': ttl_train_corr/ttl_train_size * 100.,
@@ -222,6 +228,3 @@ if __name__ == '__main__':
 
         if args.early_stop >= 0:
             if args.early_stop == epoch+1: exit()
-
-    torch.save(auTmodel, relative_path(args, 'AuT.txt'))
-    torch.save(clsmodel, relative_path(args, 'AuT-Cls.txt'))
