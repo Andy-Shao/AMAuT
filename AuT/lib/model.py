@@ -141,7 +141,7 @@ class MultiHeadAttention(nn.Module):
         self.q = nn.Linear(in_features=d, out_features=d)
         self.k = nn.Linear(in_features=d, out_features=d)
         self.v = nn.Linear(in_features=d, out_features=d)
-        self.atten_drop = nn.Dropout(p=at_dp)
+        self.atten_drop_rate = at_dp
 
         self.o = nn.Linear(in_features=d, out_features=d)
 
@@ -159,9 +159,8 @@ class MultiHeadAttention(nn.Module):
 
         # attention = self.scaled_dot_product_attention(Q=Q, K=K, V=V, mask=mask)
         attention = F.scaled_dot_product_attention(
-            query=Q, key=K, value=V, is_causal=True
+            query=Q, key=K, value=V, is_causal=True, dropout_p=self.atten_drop_rate
         )
-        attention = self.atten_drop(attention)
         attention = attention.transpose(1, 2).contiguous().view(batch_size, seq_length, embed_size)
 
         return self.o(attention)

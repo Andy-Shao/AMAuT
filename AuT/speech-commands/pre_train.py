@@ -49,7 +49,7 @@ def build_model(args:argparse.Namespace) -> tuple[nn.Module, nn.Module]:
         cfg.transform = ConfigDict()
         cfg.transform.layer_num = 24
         cfg.transform.head_num = 16
-        cfg.transform.atten_drop_rate = 0.
+        cfg.transform.atten_drop_rate = .0
         cfg.transform.mlp_mid = 1024
         cfg.transform.mlp_out = 1024
         cfg.transform.mlp_dp_rt = .1
