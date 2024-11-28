@@ -159,7 +159,7 @@ class MultiHeadAttention(nn.Module):
 
         # attention = self.scaled_dot_product_attention(Q=Q, K=K, V=V, mask=mask)
         attention = F.scaled_dot_product_attention(
-            query=Q, key=K, value=V, is_causal=True, dropout_p=self.atten_drop_rate
+            query=Q, key=K, value=V, is_causal=False, dropout_p=self.atten_drop_rate
         )
         attention = attention.transpose(1, 2).contiguous().view(batch_size, seq_length, embed_size)
 
