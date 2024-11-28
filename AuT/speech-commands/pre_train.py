@@ -147,7 +147,7 @@ if __name__ == '__main__':
     hop_length=200
     tf_array = Components(transforms=[
         pad_trunc(max_ms=max_ms, sample_rate=sample_rate),
-        time_shift(shift_limit=.15, is_random=True, is_bidirection=True),
+        time_shift(shift_limit=.17, is_random=True, is_bidirection=True),
         a_transforms.MelSpectrogram(sample_rate=sample_rate, n_mels=n_mels, n_fft=n_fft, hop_length=hop_length), # 80 x 81
         AmplitudeToDB(top_db=80., max_out=2.),
         AudioTokenTransformer() if args.embed_mode == 'linear' else DoNothing()
