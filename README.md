@@ -23,6 +23,12 @@ pip install wandb==0.17.1
 ## Potential
 conda install conda-forge::transformers==4.46.3
 ```
+Analysis environment
+```shell
+conda create --name my-analysis python=3.9 -y
+conda activate my-analysis
+conda install conda-forge::tensorboard
+```
 
 ## Processing
 

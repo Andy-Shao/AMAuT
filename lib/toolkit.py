@@ -54,6 +54,19 @@ def store_model_structure_to_txt(model: nn.Module, output_path: str) -> None:
     with open(output_path, 'w') as f:
         f.write(model_info)
 
+def store_model_structure_by_tb(model: nn.Module, input_tensor:torch.Tensor, log_dir:str) -> None:
+    from torch.utils.tensorboard.writer import SummaryWriter
+    import shutil
+
+    try:
+        if os.path.exists(log_dir): shutil.rmtree(log_dir)
+    except:
+        pass
+
+    writer = SummaryWriter(log_dir=log_dir)
+    writer.add_graph(model=model, input_to_model=input_tensor)
+    writer.close()
+
 def parse_mean_std(arg: str):
     ret = []
     for it in arg.split(','):
