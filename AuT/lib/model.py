@@ -33,14 +33,16 @@ class AudioClassifier(nn.Module):
         extend_size = config.classifier['extend_size']
         convergent_size = config.classifier['convergent_size']
         self.avgpool = nn.AdaptiveAvgPool1d(output_size=1)
+        extend_size = int(embed_size // 2)
+        convergent_size = int(embed_size // 4)
 
-        self.fc1 = nn.Linear(in_features=embed_size, out_features=int(embed_size//2), bias=True)
-        self.bn1 = nn.BatchNorm1d(num_features=int(embed_size//2), affine=True, eps=1e-6)
-        self.fc2 = nn.Linear(in_features=int(embed_size//2), out_features=int(embed_size//4))
-        self.bn2 = nn.BatchNorm1d(num_features=int(embed_size//4), affine=True, eps=1e-6)
+        self.fc1 = nn.Linear(in_features=embed_size, out_features=int(extend_size), bias=True)
+        self.bn1 = nn.BatchNorm1d(num_features=int(extend_size), affine=True, eps=1e-6)
+        self.fc2 = nn.Linear(in_features=extend_size, out_features=convergent_size)
+        self.bn2 = nn.BatchNorm1d(num_features=convergent_size, affine=True, eps=1e-6)
         self.fc2.apply(init_weights)
         self.fc3 = nn.utils.parametrizations.weight_norm(
-            module=nn.Linear(in_features=int(embed_size//4), out_features=config.classifier['class_num']), name='weight')
+            module=nn.Linear(in_features=convergent_size, out_features=config.classifier['class_num']), name='weight')
         self.fc3.apply(init_weights)
 
     def forward(self, x:torch.Tensor) -> torch.Tensor:
