@@ -6,22 +6,24 @@ import torch.nn as nn
 class Embedding(nn.Module):
     def __init__(self, num_channels:int, embed_size:int, marsked_rate:float) -> None:
         super(Embedding, self).__init__()
-        self.restnet = RestNet50(cin=num_channels, embed_size=embed_size)
+        width = 64
+        self.restnet = RestNet50(cin=num_channels, embed_size=embed_size, width=width)
         self.drop_out = nn.Dropout(p=marsked_rate)
+        self.patch_embedding = nn.Conv1d(in_channels=width*16, out_channels=embed_size, kernel_size=1, stride=1, padding=0)
 
     def forward(self, x:torch.Tensor) -> torch.Tensor:
         batch_size, channel_num, token_num, token_len = x.size()
         x = x.reshape(batch_size, -1, token_len)
         x = self.restnet(x)
+        x = self.patch_embedding(x)
         x = x.transpose(2, 1)
         x = self.drop_out(x)
 
         return x
     
 class RestNet50(nn.Module):
-    def __init__(self, cin:int, embed_size:int) -> None:
+    def __init__(self, cin:int, embed_size:int, width:int) -> None:
         super(RestNet50, self).__init__()
-        width = embed_size // 16
         self.root = nn.Sequential(
             StdConv1d(in_channels=cin, out_channels=width, kernel_size=7, stride=2, bias=False, padding=3),
             nn.GroupNorm(32, width, eps=1e-6),

@@ -33,11 +33,11 @@ class AudioClassifier(nn.Module):
         extend_size = config.classifier['extend_size']
         convergent_size = config.classifier['convergent_size']
         self.avgpool = nn.AdaptiveAvgPool1d(output_size=1)
-        extend_size = int(embed_size // 2)
-        convergent_size = int(embed_size // 4)
+        # extend_size = int(embed_size // 2)
+        # convergent_size = int(embed_size // 4)
 
-        self.fc1 = nn.Linear(in_features=embed_size, out_features=int(extend_size), bias=True)
-        self.bn1 = nn.BatchNorm1d(num_features=int(extend_size), affine=True, eps=1e-6)
+        self.fc1 = nn.Linear(in_features=embed_size, out_features=extend_size, bias=True)
+        # self.bn1 = nn.BatchNorm1d(num_features=extend_size, affine=True, eps=1e-6)
         self.fc2 = nn.Linear(in_features=extend_size, out_features=convergent_size)
         self.bn2 = nn.BatchNorm1d(num_features=convergent_size, affine=True, eps=1e-6)
         self.fc2.apply(init_weights)
@@ -51,7 +51,7 @@ class AudioClassifier(nn.Module):
         x = self.avgpool(x)
         x = x.contiguous().view(batch_size, token_len)
 
-        x = self.bn1(self.fc1(x))
+        x = self.fc1(x)
         x = self.bn2(self.fc2(x))
         x = self.fc3(x)
 
@@ -91,7 +91,7 @@ class AttentionBlock(nn.Module):
         self.attention = MultiHeadAttention(
             d=embed_size, h=config.transform['head_num'], at_dp=config.transform['atten_drop_rate'])
         self.ffn = MultilayerPerceptron(
-            fin=embed_size, fmid=config.transform['mlp_mid'], fout=config.transform['mlp_out'],
+            fin=embed_size, fmid=config.transform['mlp_mid'], fout=embed_size,
             dp_rt=config.transform['mlp_dp_rt']
         )
         self.ffn_norm = nn.LayerNorm(embed_size, eps=1e-6)
