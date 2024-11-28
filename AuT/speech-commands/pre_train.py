@@ -47,10 +47,10 @@ def build_optimizer(args: argparse.Namespace, auT:nn.Module, auC:nn.Module) -> o
 def build_model(args:argparse.Namespace) -> tuple[nn.Module, nn.Module]:
     def transformer_cfg(args:argparse.Namespace, cfg:ConfigDict) -> None:
         cfg.transform = ConfigDict()
-        cfg.transform.layer_num = 12 #24
-        cfg.transform.head_num = 12 #16
+        cfg.transform.layer_num = 12 if args.embed_size == 768 else 24
+        cfg.transform.head_num = 12 if args.embed_size == 768 else 16
         cfg.transform.atten_drop_rate = .0
-        cfg.transform.mlp_mid = 3072 #4096
+        cfg.transform.mlp_mid = 3072 if args.embed_size == 768 else 4096
         cfg.transform.mlp_dp_rt = .1
     
     def classifier_cfg(args:argparse.Namespace, cfg:ConfigDict) -> None:
@@ -68,7 +68,7 @@ def build_model(args:argparse.Namespace) -> tuple[nn.Module, nn.Module]:
     elif args.embed_mode == 'restnet':
         config.embedding.channel_num = 80
     config.embedding.marsked_rate = .15
-    config.embedding.embed_size = 768 #1024
+    config.embedding.embed_size = args.embed_size
     config.embedding.mode = args.embed_mode # restnet or linear
 
     transformer_cfg(args, config)
@@ -108,6 +108,7 @@ if __name__ == '__main__':
     ap.add_argument('--smooth', type=float, default=.1)
     ap.add_argument('--early_stop', type=int, default=-1)
     ap.add_argument('--embed_mode', type=str, default='linear', choices=['restnet', 'linear'])
+    ap.add_argument('--embed_size', type=int, default=768, choices=[768, 1024])
 
     args = ap.parse_args()
     if args.dataset == 'speech-commands' or args.dataset == 'speech-commands-random':
