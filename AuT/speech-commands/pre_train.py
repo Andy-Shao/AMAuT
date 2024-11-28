@@ -45,25 +45,35 @@ def build_optimizer(args: argparse.Namespace, auT:nn.Module, auC:nn.Module) -> o
     return optimizer
 
 def build_model(args:argparse.Namespace) -> tuple[nn.Module, nn.Module]:
+    def transformer_cfg(args:argparse.Namespace, cfg:ConfigDict) -> None:
+        cfg.transform = ConfigDict()
+        cfg.transform.layer_num = 24
+        cfg.transform.head_num = 16
+        cfg.transform.atten_drop_rate = 0.
+        cfg.transform.mlp_mid = 1024
+        cfg.transform.mlp_out = 1024
+        cfg.transform.mlp_dp_rt = .1
+    
+    def classifier_cfg(args:argparse.Namespace, cfg:ConfigDict) -> None:
+        cfg.classifier = ConfigDict()
+        cfg.classifier.class_num = args.class_num
+        cfg.classifier.extend_size = 2048
+        cfg.classifier.convergent_size = 256
+
     config = ConfigDict()
     config.embedding = ConfigDict()
-    config.embedding.in_token_len = 81
-    config.embedding.in_token_num = 80
-    config.embedding.channel_num = 80
+    if args.embed_mode == 'linear':
+        config.embedding.in_token_len = 81
+        config.embedding.in_token_num = 80
+        config.embedding.channel_num = 1
+    elif args.embed_mode == 'restnet':
+        config.embedding.channel_num = 80
     config.embedding.marsked_rate = .15
     config.embedding.embed_size = 1024
-    config.embedding.mode = args.embed_mode # conv or linear
-    config.transform = ConfigDict()
-    config.transform.layer_num = 24
-    config.transform.head_num = 16
-    config.transform.atten_drop_rate = 0.
-    config.transform.mlp_mid = 1024
-    config.transform.mlp_out = 1024
-    config.transform.mlp_dp_rt = .1
-    config.classifier = ConfigDict()
-    config.classifier.class_num = args.class_num
-    config.classifier.extend_size = 2048
-    config.classifier.convergent_size = 256
+    config.embedding.mode = args.embed_mode # restnet or linear
+
+    transformer_cfg(args, config)
+    classifier_cfg(args, config)
 
     auTmodel = AudioTransform(config=config).to(device=args.device)
     clsmodel = AudioClassifier(config=config).to(device=args.device)
