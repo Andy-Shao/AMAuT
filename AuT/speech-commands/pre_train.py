@@ -13,7 +13,7 @@ import torch.nn as nn
 import torch.optim as optim
 
 from lib.toolkit import print_argparse, store_model_structure_to_txt, relative_path, count_ttl_params
-from lib.wavUtils import pad_trunc, Components, AmplitudeToDB, DoNothing
+from lib.wavUtils import pad_trunc, Components, AmplitudeToDB, DoNothing, time_shift
 from lib.scDataset import SpeechCommandsDataset
 from AuT.lib.model import AudioTransform, AudioClassifier, cal_model_tag
 from AuT.lib.loss import CrossEntropyLabelSmooth
@@ -147,6 +147,7 @@ if __name__ == '__main__':
     hop_length=200
     tf_array = Components(transforms=[
         pad_trunc(max_ms=max_ms, sample_rate=sample_rate),
+        time_shift(shift_limit=.15, is_random=True, is_bidirection=True),
         a_transforms.MelSpectrogram(sample_rate=sample_rate, n_mels=n_mels, n_fft=n_fft, hop_length=hop_length), # 80 x 81
         AmplitudeToDB(top_db=80., max_out=2.),
         AudioTokenTransformer() if args.embed_mode == 'linear' else DoNothing()
