@@ -33,12 +33,6 @@ conda install conda-forge::tensorboard
 ## Processing
 
 ## Dataset
-### Audio MNIST
-+ sample size: 30000
-+ sample rate: 48000
-+ sample data shape: [1, 14073 - 47998]
-  
-[Audio MNIST Link](https://github.com/soerenab/AudioMNIST/tree/master)
 
 ### Speech Commands Dataset v0.01
 The dataset (1.4 GB) has 65,000 one-second long utterances of 30 short words by thousands of different people, contributed by public members through the AIY website. This is a set of one-second .wav audio files, each containing a single spoken English word.
