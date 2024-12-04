@@ -1,7 +1,6 @@
 # Audio-Transform
 
 ## Project Structure
-+ **legacy**: it includes all previous research algorithm implements
 + **CoNMix**: the CoNMix test-time training algorithm implement
 + **AuT**: the Audio Transform structure
 
