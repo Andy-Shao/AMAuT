@@ -1,14 +1,18 @@
 import sys
 BASE_PATH='/home/andyshao'
+PROJECT_PATH=BASE_PATH + '/Audio-Transform/legacy/audio-transformer/SSAST'
 sys.path.append(f"{BASE_PATH}/data/sls/scratch/aed-trans/src/models/")
 sys.path.append(f"{BASE_PATH}/data/sls/scratch/aed-trans/src/")
 from timm.models.layers import to_2tuple
 import numpy as np
 import timm
 from typing import Optional, Callable, Tuple, Union
+import os
 
 import torch
 import torch.nn as nn
+
+from src.utils.toolkits import store_model_structure_to_txt, print_attributes
 
 # override the timm package to relax the input shape constraint.
 class PatchEmbed(nn.Module):
@@ -28,47 +32,6 @@ class PatchEmbed(nn.Module):
     def forward(self, x):
         x = self.proj(x).flatten(2).transpose(1, 2)
         return x
-    
-class PatchEmbed2(nn.Module):
-    """ 2D Image to Patch Embedding
-    """
-    def __init__(
-            self,
-            img_size: Optional[int] = 224,
-            patch_size: int = 16,
-            in_chans: int = 3,
-            embed_dim: int = 768,
-            norm_layer: Optional[Callable] = None,
-            flatten: bool = True,
-            output_fmt: Optional[str] = None,
-            bias: bool = True,
-            strict_img_size: bool = True,
-            dynamic_img_pad: bool = False,
-    ):
-        super().__init__()
-        self.patch_embed = PatchEmbed(
-            img_size=img_size, patch_size=patch_size, in_chans=in_chans, embed_dim=embed_dim
-        )
-
-    def forward(self,x):
-        return self.patch_embed(x)
-
-    def _init_img_size(self, img_size: Union[int, Tuple[int, int]]):
-        pass
-
-    def set_input_size(
-            self,
-            img_size: Optional[Union[int, Tuple[int, int]]] = None,
-            patch_size: Optional[Union[int, Tuple[int, int]]] = None,
-    ):
-        pass
-
-    def feat_ratio(self, as_scalar=True) -> Union[Tuple[int, int], int]:
-        pass
-
-    def dynamic_feat_size(self, img_size: Tuple[int, int]) -> Tuple[int, int]:
-        pass
-
 
 def get_sinusoid_encoding(n_position, d_hid):
     ''' Sinusoid position encoding table '''
@@ -88,7 +51,7 @@ class ASTModel(nn.Module):
                  input_fdim=128, input_tdim=1024, model_size='base',
                  pretrain_stage=True, load_pretrained_mdl_path=None):
         super(ASTModel, self).__init__()
-        # assert timm.__version__ == '0.4.5', 'Please use timm == 0.4.5, the code might not be compatible with newer versions.'
+        assert timm.__version__ == '0.4.5', 'Please use timm == 0.4.5, the code might not be compatible with newer versions.'
 
         # override timm input shape restriction
         timm.models.vision_transformer.PatchEmbed = PatchEmbed
@@ -114,14 +77,42 @@ class ASTModel(nn.Module):
                 self.heads, self.depth = 12, 12
                 self.cls_token_num = 2
             elif model_size == 'base_nokd':
-                self.v = timm.create_model('vit_deit_base_patch16_384', pretrained=False)
+                self.v = timm.create_model('vit_deit_base_patch16_384', pretrained=False) # image_size is 384
                 self.heads, self.depth = 12, 12
                 self.cls_token_num = 1
             else:
                 raise Exception('Model size must be one of tiny, small, base, base_nokd')
+
+        store_model_structure_to_txt(model=self.v, output_path=os.path.join(PROJECT_PATH, 'DeiTModel.txt'))
+        print_attributes(obj=self.v, atts=[], output_path=os.path.join(PROJECT_PATH, 'DeiTModel_items.txt'))
+        print_attributes(
+            obj=self.v,
+            atts=[
+                'num_classes', 'num_features', 'embed_dim', 'cls_token', 'patch_embed', 'pos_embed',
+                'pos_drop', 'dist_token', 'norm', 'head', 'head_dist', 'training'
+            ],
+            output_path=os.path.join(PROJECT_PATH, 'DeiTModel_attributes.txt')
+        )
+
+        self.original_num_patches = self.v.patch_embed.num_patches #576
+        self.oringal_hw = int(self.original_num_patches ** 0.5) #24
+        self.original_embedding_dim = self.v.pos_embed.shape[2] #768
+
             
-print('Testing')
-ASTModel(label_dim=527,
-         fshape=16, tshape=16, fstride=16, tstride=16,
-         input_fdim=128, input_tdim=1024, model_size='base',
-         pretrain_stage=True, load_pretrained_mdl_path=None)
+if __name__ == '__main__':
+    # this is an example of how to use the SSAST model
+
+    # pretraining stage
+    # suppose you have an unlabled dataset with avg length of 1024 frames (i.e., 10.24s)
+    input_tdim = 1024
+    # create a 16*16 patch based AST model for pretraining.
+    # note, we don't use patch split overlap in pretraining, so fstride=fshape and tstride=tshape
+    ast_mdl = ASTModel(
+        fshape=16, tshape=16, fstride=16, tstride=16,
+        input_fdim=128, input_tdim=input_tdim, model_size='base',
+        pretrain_stage=True)
+    # # alternatively, create a frame based AST model
+    # ast_mdl = ASTModel(
+    #              fshape=128, tshape=2, fstride=128, tstride=2,
+    #              input_fdim=128, input_tdim=input_tdim, model_size='base',
+    #              pretrain=True)
