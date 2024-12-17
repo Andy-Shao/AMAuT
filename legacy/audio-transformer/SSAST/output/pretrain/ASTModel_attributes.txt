@@ -3,9 +3,9 @@ num_features=768
 embed_dim=768
 cls_token -> torch.Size([1, 1, 768])
 patch_embed=PatchEmbed(
-  (proj): Conv2d(3, 768, kernel_size=(16, 16), stride=(16, 16))
+  (proj): Conv2d(1, 768, kernel_size=(16, 16), stride=(16, 16))
 )
-pos_embed -> torch.Size([1, 578, 768])
+pos_embed -> torch.Size([1, 514, 768])
 pos_drop=Dropout(p=0.0, inplace=False)
 dist_token -> torch.Size([1, 1, 768])
 norm=LayerNorm((768,), eps=1e-06, elementwise_affine=True)

@@ -1,6 +1,6 @@
 DistilledVisionTransformer(
   (patch_embed): PatchEmbed(
-    (proj): Conv2d(3, 768, kernel_size=(16, 16), stride=(16, 16))
+    (proj): Conv2d(1, 768, kernel_size=(16, 16), stride=(16, 16))
   )
   (pos_drop): Dropout(p=0.0, inplace=False)
   (blocks): ModuleList(

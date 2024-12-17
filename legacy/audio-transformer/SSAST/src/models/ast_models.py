@@ -3,7 +3,7 @@ BASE_PATH='/home/andyshao'
 PROJECT_PATH=BASE_PATH + '/Audio-Transform/legacy/audio-transformer/SSAST'
 sys.path.append(f"{BASE_PATH}/data/sls/scratch/aed-trans/src/models/")
 sys.path.append(f"{BASE_PATH}/data/sls/scratch/aed-trans/src/")
-from timm.models.layers import to_2tuple
+from timm.models.layers import to_2tuple, trunc_normal_
 import numpy as np
 import timm
 from typing import Optional, Callable, Tuple, Union
@@ -83,21 +83,79 @@ class ASTModel(nn.Module):
             else:
                 raise Exception('Model size must be one of tiny, small, base, base_nokd')
 
-        store_model_structure_to_txt(model=self.v, output_path=os.path.join(PROJECT_PATH, 'DeiTModel.txt'))
-        print_attributes(obj=self.v, atts=[], output_path=os.path.join(PROJECT_PATH, 'DeiTModel_items.txt'))
+        self.original_num_patches = self.v.patch_embed.num_patches #576
+        self.oringal_hw = int(self.original_num_patches ** 0.5) #24
+        self.original_embedding_dim = self.v.pos_embed.shape[2] #768
+
+        # SSL Pretraining Code
+        self.softmax = nn.Softmax(dim=-1)
+        self.lsoftmax = nn.LogSoftmax(dim=-1)
+        self.fshape, self.tshape = fshape, tshape
+        self.fstride, self.tstride = fstride, tstride
+        self.input_fdim, self.input_tdim = input_fdim, input_tdim
+        # this is a trick to make state_dict to track pretraining input_fdim and input_tdim and save them by using torch.save
+        self.p_input_fdim, self.p_input_tdim = nn.Parameter(torch.tensor(input_fdim), requires_grad=False), nn.Parameter(torch.tensor(input_tdim), requires_grad=False)
+
+        # masked patch classification (discriminative objective) layer
+        # we use two layers for pretext task, but using a single layer has similar performance.
+        # we map the output of transformer (768-dim for base models) to 256-dim patch input space, and then dot product with flattened patch input (also 256-dim) to calculate loss.
+        # alternatively, you can map the output of transformer to 768-dim patch embedding space, and dot product with patch embedding. Performance-wise they are similar, but map to 256 space is more efficient.
+        self.cpredlayer = nn.Sequential(
+            nn.Linear(self.original_embedding_dim, self.original_embedding_dim), 
+            nn.ReLU(), 
+            nn.Linear(self.original_embedding_dim, 256)
+        )
+        # masked patch reconstruction (generative objective) layer
+        self.gpredlayer = nn.Sequential(
+            nn.Linear(self.original_embedding_dim, self.original_embedding_dim), 
+            nn.ReLU(), 
+            nn.Linear(self.original_embedding_dim, 256)
+        )
+        self.unfold = torch.nn.Unfold(kernel_size=(fshape, tshape), stride=(fstride, tstride))
+
+        # we use learnable mask embedding (follow the BEIT paper), but using a fixed mask embedding (e.g., 0) leads to same performance.
+        self.mask_embed = nn.Parameter(torch.zeros([1, 1, self.original_embedding_dim]))
+        self.mask_embed = torch.nn.init.xavier_normal_(self.mask_embed)
+
+        # get the intermediate shape
+        self.p_f_dim, self.p_t_dim = self.get_shape(fstride, tstride, input_fdim, input_tdim, fshape, tshape)
+        num_patches = self.p_f_dim * self.p_t_dim
+        self.num_patches = num_patches
+        self.v.patch_embed.num_patches = num_patches
+        print('pretraining patch split stride: frequency={:d}, time={:d}'.format(fstride, tstride))
+        print('pretraining patch shape: frequency={:d}, time={:d}'.format(fshape, tshape))
+        print('pretraining patch array dimension: frequency={:d}, time={:d}'.format(self.p_f_dim, self.p_t_dim))
+        print('pretraining number of patches={:d}'.format(num_patches))
+
+        # the linear patch projection layer, use 1 channel for spectrogram rather than the original 3 channels for RGB images.
+        new_proj = torch.nn.Conv2d(1, self.original_embedding_dim, kernel_size=(fshape, tshape), stride=(fstride, tstride))
+        self.v.patch_embed.proj = new_proj
+
+        # use trainable positional embedding
+        new_pos_embed = nn.Parameter(torch.zeros(1, self.v.patch_embed.num_patches + self.cls_token_num, self.original_embedding_dim))
+        self.v.pos_embed = new_pos_embed
+        trunc_normal_(self.v.pos_embed, std=.02)
+
+        store_model_structure_to_txt(model=self.v, output_path=os.path.join(PROJECT_PATH, 'output/pretrain/ASTModel.txt'))
+        print_attributes(obj=self.v, atts=[], output_path=os.path.join(PROJECT_PATH, 'output/pretrain/ASTModel_items.txt'))
         print_attributes(
             obj=self.v,
             atts=[
                 'num_classes', 'num_features', 'embed_dim', 'cls_token', 'patch_embed', 'pos_embed',
                 'pos_drop', 'dist_token', 'norm', 'head', 'head_dist', 'training'
             ],
-            output_path=os.path.join(PROJECT_PATH, 'DeiTModel_attributes.txt')
+            output_path=os.path.join(PROJECT_PATH, 'output/pretrain/ASTModel_attributes.txt')
         )
-
-        self.original_num_patches = self.v.patch_embed.num_patches #576
-        self.oringal_hw = int(self.original_num_patches ** 0.5) #24
-        self.original_embedding_dim = self.v.pos_embed.shape[2] #768
-
+    
+    def get_shape(self, fstride, tstride, input_fdim, input_tdim, fshape, tshape):
+        """get the shape of intermediate representation.
+        """
+        test_input = torch.randn(1, 1, input_fdim, input_tdim)
+        test_proj = nn.Conv2d(1, self.original_embedding_dim, kernel_size=(fshape, tshape), stride=(fstride, tstride))
+        test_out = test_proj(test_input)
+        f_dim = test_out.shape[2]
+        t_dim = test_out.shape[3]
+        return f_dim, t_dim
             
 if __name__ == '__main__':
     # this is an example of how to use the SSAST model
