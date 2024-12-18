@@ -6,7 +6,6 @@ sys.path.append(f"{BASE_PATH}/data/sls/scratch/aed-trans/src/")
 from timm.models.layers import to_2tuple, trunc_normal_
 import numpy as np
 import timm
-from typing import Optional, Callable, Tuple, Union
 import os
 import random
 
@@ -50,7 +49,7 @@ class ASTModel(nn.Module):
     def __init__(self, label_dim=527,
                  fshape=128, tshape=2, fstride=128, tstride=2,
                  input_fdim=128, input_tdim=1024, model_size='base',
-                 pretrain_stage=True, load_pretrained_mdl_path=None):
+                 pretrain_stage=True, load_pretrained_mdl_path=None, print_structure=True):
         super(ASTModel, self).__init__()
         assert timm.__version__ == '0.4.5', 'Please use timm == 0.4.5, the code might not be compatible with newer versions.'
 
@@ -137,23 +136,92 @@ class ASTModel(nn.Module):
             self.v.pos_embed = new_pos_embed
             trunc_normal_(self.v.pos_embed, std=.02)
 
-            store_model_structure_to_txt(model=self.v, output_path=os.path.join(PROJECT_PATH, 'output', 'pretrain', 'DeiTModel.txt'))
-            print_attributes(obj=self.v, atts=[], output_path=os.path.join(PROJECT_PATH, 'output', 'pretrain', 'DeiTModel_items.txt'))
-            print_attributes(
-                obj=self.v,
-                atts=[
-                    'num_classes', 'num_features', 'embed_dim', 'cls_token', 'patch_embed', 'pos_embed',
-                    'pos_drop', 'dist_token', 'norm', 'head', 'head_dist', 'training'
-                ],
-                output_path=os.path.join(PROJECT_PATH, 'output', 'pretrain', 'DeiTModel_attributes.txt')
-            )
+            if print_structure:
+                store_model_structure_to_txt(model=self.v, output_path=os.path.join(PROJECT_PATH, 'output', 'pretrain', 'DeiTModel.txt'))
+                print_attributes(obj=self.v, atts=[], output_path=os.path.join(PROJECT_PATH, 'output', 'pretrain', 'DeiTModel_items.txt'))
+                print_attributes(
+                    obj=self.v,
+                    atts=[
+                        'num_classes', 'num_features', 'embed_dim', 'cls_token', 'patch_embed', 'pos_embed',
+                        'pos_drop', 'dist_token', 'norm', 'head', 'head_dist', 'training'
+                    ],
+                    output_path=os.path.join(PROJECT_PATH, 'output', 'pretrain', 'DeiTModel_attributes.txt')
+                )
         # use a pretrained models for finetuning
         elif pretrain_stage == False:
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             if load_pretrained_mdl_path == None:
                 raise ValueError('Please set load_pretrained_mdl_path to load a pretrained models.')
             sd = torch.load(load_pretrained_mdl_path, map_location=device)
-            # TODO: in future
+            # get the fshape and tshape, input_fdim and input_tdim in the pretraining stage
+            try:
+                p_fshape, p_tshape = sd['module.v.patch_embed.proj.weight'].shape[2], sd['module.v.patch_embed.proj.weight'].shape[3]
+                p_input_fdim, p_input_tdim = sd['module.p_input_fdim'].item(), sd['module.p_input_tdim'].item()
+            except:
+                raise  ValueError('The model loaded is not from a torch.nn.Dataparallel object. Wrap it with torch.nn.Dataparallel and try again.')
+            
+            print('now load a SSL pretrained models from ' + load_pretrained_mdl_path)
+            # during pretraining, fstride=fshape and tstride=tshape because no patch overlapping is used
+            # here, input_fdim and input_tdim should be that used in pretraining, not that in the fine-tuning.
+            # we need to know input_fdim and input_tdim to do positional embedding cut/interpolation.
+            # generally it should be better to use same input_fdim during pretraining and finetuning, but input_tdim can be safely different
+            audio_model = ASTModel(
+                fstride=p_fshape, tstride=p_tshape, fshape=p_fshape, tshape=p_tshape,
+                input_fdim=p_input_fdim, input_tdim=p_input_tdim, pretrain_stage=True, model_size=model_size,
+                print_structure=False
+            )
+            audio_model = torch.nn.DataParallel(audio_model)
+            audio_model.load_state_dict(sd, strict=False)
+
+            self.v = audio_model.module.v
+            self.original_embedding_dim = self.v.pos_embed.shape[2]
+            self.cls_token_num = audio_model.module.cls_token_num
+
+            # mlp head for fine-tuning
+            self.mlp_head = nn.Sequential(
+                nn.LayerNorm(self.original_embedding_dim),
+                nn.Linear(self.original_embedding_dim, label_dim)
+            )
+
+            f_dim, t_dim = self.get_shape(fstride, tstride, input_fdim, input_tdim, fshape, tshape)
+            # patch array dimension during pretraining
+            p_f_dim, p_t_dim = audio_model.module.p_f_dim, audio_model.module.p_t_dim
+            num_patches = f_dim * t_dim
+            p_num_patches = p_f_dim * p_t_dim
+            self.v.patch_embed.num_patches = num_patches
+            print('fine-tuning patch split stride: frequncey={:d}, time={:d}'.format(fstride, tstride))
+            print('fine-tuning number of patches={:d}'.format(num_patches))
+
+            # patch shape should be same for pretraining and fine-tuning
+            if fshape != p_fshape or tshape != p_tshape:
+                raise ValueError('The patch shape of pretraining and fine-tuning is not consistant, pretraining: f={:d}, t={:d}, finetuning: f={:d}, t={:d}'.format(p_fshape, p_tshape, fshape, tshape))
+            
+            # patch split stride generally should be different for pretraining and fine-tuning, as patch split overlapping is only used in finetuning
+            # during pretraining, p_fshape = p_fstride and p_tshape = p_tstride
+            if fstride != p_fshape or tstride != p_tshape:
+                # initialize a new patch embedding layer with desired new stride.
+                new_proj = torch.nn.Conv2d(1, self.original_embedding_dim, kernel_size=(fshape, tshape), stride=(fstride, tstride))
+                # but the weights of patch embedding layer is still got from the pretrained models
+                new_proj.weight = torch.nn.Parameter(torch.sum(self.v.patch_embed.proj.weight, dim=1).unsqueeze(1))
+                new_proj.bias = self.v.patch_embed.proj.bias
+                self.v.patch_embed.proj = new_proj
+            
+            new_pos_embed = self.v.pos_embed[:, self.cls_token_num:, :].detach() # 1 * 512 * 768
+            new_pos_embed = new_pos_embed.reshape(1, p_num_patches, self.original_embedding_dim).transpose(1, 2) # 1 * 768 * 512
+            new_pos_embed = new_pos_embed.reshape(1, self.original_embedding_dim, p_f_dim, p_t_dim) # 1 * 768 * 8 * 16
+            # cut or interpolate the positional embedding
+            if t_dim < p_t_dim:
+                new_pos_embed = new_pos_embed[:, :, :, int(p_t_dim/2) - int(t_dim / 2): int(p_t_dim/2) - int(t_dim / 2) + t_dim]
+            else:
+                new_pos_embed = torch.nn.functional.interpolate(new_pos_embed, size=(8, t_dim), mode='bilinear')
+            if f_dim < p_f_dim:
+                new_pos_embed = new_pos_embed[:, :, int(p_f_dim/2) - int(f_dim / 2): int(p_f_dim/2) - int(f_dim / 2) + t_dim, :]
+            else:
+                new_pos_embed = torch.nn.functional.interpolate(new_pos_embed, size=(f_dim, t_dim), mode='bilinear')
+
+            new_pos_embed = new_pos_embed.reshape(1, self.original_embedding_dim, num_patches).transpose(1, 2) # 1 * 108 * 768
+            # 1 * 110 * 768
+            self.v.pos_embed = nn.Parameter(torch.cat([self.v.pos_embed[:, :self.cls_token_num, :].detach(), new_pos_embed], dim=1))
     
     def get_shape(self, fstride, tstride, input_fdim, input_tdim, fshape, tshape):
         """get the shape of intermediate representation.
@@ -386,7 +454,7 @@ if __name__ == '__main__':
 
     # after pretraining, save the pretrained model.
     # the code is designed for Dataparallel model
-    # ast_mdl = torch.nn.DataParallel(ast_mdl)
+    ast_mdl = torch.nn.DataParallel(ast_mdl)
     state_file = os.path.join(PROJECT_PATH, 'output/pretrain/test_mdl.pth')
     torch.save(obj=ast_mdl.state_dict(), f=state_file)
 
@@ -403,3 +471,11 @@ if __name__ == '__main__':
                  fshape=16, tshape=16, fstride=10, tstride=10,
                  input_fdim=128, input_tdim=input_tdim, model_size='base',
                  pretrain_stage=False, load_pretrained_mdl_path=state_file)
+    # # alternatively, use a frame based AST model
+    # ast_mdl = ASTModel(label_dim=35,
+    #              fshape=128, tshape=2, fstride=128, tstride=1,
+    #              input_fdim=128, input_tdim=input_tdim, model_size='base',
+    #              pretrain_stage=False, load_pretrained_mdl_path='./test_mdl.pth')
+
+    # do finetuning, see src/traintest.py for our finetuning code
+    test_input = torch.zeros([10, input_tdim, 128])
