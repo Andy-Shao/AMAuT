@@ -8,6 +8,7 @@ import numpy as np
 import timm
 from typing import Optional, Callable, Tuple, Union
 import os
+import random
 
 import torch
 import torch.nn as nn
@@ -136,15 +137,15 @@ class ASTModel(nn.Module):
             self.v.pos_embed = new_pos_embed
             trunc_normal_(self.v.pos_embed, std=.02)
 
-            store_model_structure_to_txt(model=self.v, output_path=os.path.join(PROJECT_PATH, 'output/pretrain/ASTModel.txt'))
-            print_attributes(obj=self.v, atts=[], output_path=os.path.join(PROJECT_PATH, 'output/pretrain/ASTModel_items.txt'))
+            store_model_structure_to_txt(model=self.v, output_path=os.path.join(PROJECT_PATH, 'output/pretrain/DeiTModel.txt'))
+            print_attributes(obj=self.v, atts=[], output_path=os.path.join(PROJECT_PATH, 'output/pretrain/DeiTModel_items.txt'))
             print_attributes(
                 obj=self.v,
                 atts=[
                     'num_classes', 'num_features', 'embed_dim', 'cls_token', 'patch_embed', 'pos_embed',
                     'pos_drop', 'dist_token', 'norm', 'head', 'head_dist', 'training'
                 ],
-                output_path=os.path.join(PROJECT_PATH, 'output/pretrain/ASTModel_attributes.txt')
+                output_path=os.path.join(PROJECT_PATH, 'output/pretrain/DeiTModel_attributes.txt')
             )
         # use a pretrained models for finetuning
         elif pretrain_stage == False:
@@ -168,6 +169,106 @@ class ASTModel(nn.Module):
         # expect input x = (batch_size, time_frame_num, frequency_bins), e.g., (12, 1024, 128)
         x = x.unsqueeze(1)
         x = x.transpose(2, 3)
+
+        # finetuning (ft), use the mean of all token (patch) output as clip-level representation.
+        # this is default for SSAST fine-tuning as during pretraining, supervision signal is given to each token, not the [cls] token
+        if task == 'ft_avgtok':
+            return self.finetuningavgtok(x)
+        # alternatively, use the [cls] token output as clip-level representation.
+        elif task == 'ft_cls':
+            return self.finetuningcls(x)
+        # pretraining, masked patch classification (discriminative objective)
+        elif task == 'pretrain_mpc':
+            return self.mpc(x, mask_patch=mask_patch, cluster=cluster)
+        # pretraining, masked patch reconstruction (generative objective)
+        elif task == 'pretrain_mpg':
+            return self.mpg(x, mask_patch=mask_patch, cluster=cluster)
+        elif task == 'visualize_mask':
+            return self.mpc(x, mask_patch=mask_patch, cluster=cluster, show_mask=True)
+        else:
+            raise Exception('Task unrecognized.')
+        
+    def finetuningcls(self, x):
+        pass
+
+    def finetuningcls(self, x):
+        pass
+
+    def mpc(self, x, mask_patch, cluster, show_mask=False):
+        """masked patch pretraining with discriminative objective
+        """
+        input = self.unfold(x).transpose(1, 2)
+        B = x.shape[0]
+        # x in shape (batch_size, sequence_len, embedding dim)
+        x = self.v.patch_embed(x)
+
+        # encode the patch
+        # size 12(batch_size) * 100(#mask_patch) * 768(hidden_dim), prepare to save the true values of masked samples
+        encode_samples = torch.empty((B, mask_patch, 256), device=x.device, requires_grad=False).float()
+        # size 12(batch_size) * 100(#mask_patch), index of masked patches
+        mask_index = torch.empty((B, mask_patch), device=x.device, requires_grad=False).long()
+        # size 12(batch_size) * 512(sequence_len) * 768(hidden_dim)
+        mask_dense = torch.ones([x.shape[0], x.shape[1], x.shape[2]], device=x.device)
+
+        # for each audio clip in the batch
+        for i in range(B):
+            # randomly generate #mask_patch mask indexes without duplicate
+            if cluster == True:
+                # use this if you are masking e.g. 16*16 patches
+                mask_index[i] = self.gen_maskid_patch(self.num_patches, mask_patch)
+            else:
+                # use this if you are masking frame, i.e., 128*2 patches
+                mask_index[i] = self.gen_maskid_frame(self.num_patches, mask_patch)
+            # copy the masked embeddings, note gradients are stopped in this path
+            encode_samples[i] = input[i, mask_index[i], :].clone().detach()
+            # mask the encode samples with 0
+            mask_dense[i, mask_index[i], :] = 0
+
+        # follow BEIT paper, mask with learnable masking embedding, but no performance diff observed compared with masking with 0s.
+        mask_tokens = self.mask_embed.expand(B, x.shape[1], -1)
+
+        # mask the patch
+        x = x * mask_dense + (1-mask_dense) * mask_tokens
+
+        # pass through the Transformer layers
+        cls_tokens = self.v.cls_token.expand(B, -1, -1)  # stole cls_tokens impl from Phil Wang, thanks
+        dist_token = self.v.dist_token.expand(B, -1, -1)
+        x = torch.cat((cls_tokens, dist_token, x), dim=1)
+        x = x + self.v.pos_embed
+        x = self.v.pos_drop(x)
+        for blk in self.v.blocks:
+            x = blk(x)
+        x = self.v.norm(x)
+    
+    def gen_maskid_patch(self, sequence_len=512, mask_size=100, cluster=3):
+        """generate mask for 16*16 patch
+        """
+        mask_id = []
+        # randomize clutering factor in [3,6)
+        cur_clus = random.randrange(cluster) + 3
+
+        while len(list(set(mask_id))) <= mask_size:
+            start_id = random.randrange(sequence_len)
+            cur_mask = []
+            for i in range(0, cur_clus):
+                for j in range(0, cur_clus):
+                    mask_cand = start_id + self.p_t_dim * i + j
+                    if mask_cand > 0 and mask_cand < sequence_len:
+                        cur_mask.append(mask_cand)
+            mask_id = mask_id + cur_mask
+        mask_id = list(set(mask_id))[:mask_size]
+        return torch.tensor(mask_id)
+
+    def gen_maskid_frame(self, sequence_len=512, mask_size=100):
+        """using cluster for frame masking hurts the performance, so just use the naive random sampling
+        """
+        mask_id = random.sample(range(0, sequence_len), mask_size)
+        return torch.tensor(mask_id)
+
+    def mpg(self, input, mask_patch, cluster):
+        """masked patch pretraining with generative objective
+        """
+        pass
             
 if __name__ == '__main__':
     # this is an example of how to use the SSAST model
@@ -191,12 +292,12 @@ if __name__ == '__main__':
     # input in shape [batch_size, input_tdim, input_fdim]
     test_input = torch.zeros([10, input_tdim, 128])
     # mask 100 patches for both discriminative and generative loss
-    acc, nce_loss = ast_mdl(test_input, task='pretrain_mpc', mask_patch=100)
-    mse_loss = ast_mdl(test_input, task='pretrain_mpg', mask_patch=100)
-    loss = nce_loss + 10 * mse_loss
+    # acc, nce_loss = ast_mdl(test_input, task='pretrain_mpc', mask_patch=100)
+    # mse_loss = ast_mdl(test_input, task='pretrain_mpg', mask_patch=100)
+    # loss = nce_loss + 10 * mse_loss
     # do back propagate and update the model, etc
 
     # after pretraining, save the pretrained model.
     # the code is designed for Dataparallel model
-    ast_mdl = torch.nn.DataParallel(ast_mdl)
-    torch.save(ast_mdl.state_dict(), os.path.join(PROJECT_PATH, '/output/pretrain/test_mdl.pth'))
+    # ast_mdl = torch.nn.DataParallel(ast_mdl)
+    torch.save(obj=ast_mdl.state_dict(), f=os.path.join(PROJECT_PATH, 'output/pretrain/test_mdl.pth'))
