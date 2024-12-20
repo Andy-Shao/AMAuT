@@ -267,10 +267,10 @@ class ASTModel(nn.Module):
             return self.mpc(x, mask_patch=mask_patch, cluster=cluster, show_mask=True)
         else:
             raise Exception('Task unrecognized.')
-        
-    def finetuningcls(self, x):
+    
+    def finetuningavgtok(self, x):
         pass
-
+        
     def finetuningcls(self, x):
         pass
 
@@ -491,3 +491,15 @@ if __name__ == '__main__':
 
     # do finetuning, see src/traintest.py for our finetuning code
     test_input = torch.zeros([10, input_tdim, 128])
+    # prediction = ast_mdl(test_input, task='ft_avgtok')
+    # output should in shape [batch_size, label_dim]
+    # print(prediction.shape)
+    # calculate the loss, do back propagate, etc
+
+    # # (optional) do some probe test
+    # test_input = torch.zeros([1, input_tdim, 128]).to(device)
+    # acc, nce = ast_mdl(test_input, task='pretrain_mpc', mask_patch=100)
+    # # you can visualize the mask
+    # pred, masked = ast_mdl(test_input, task='visualize_mask', mask_patch=100)
+    # plt.imshow(masked[0,0])
+    # plt.show()
