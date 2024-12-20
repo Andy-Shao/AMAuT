@@ -222,6 +222,18 @@ class ASTModel(nn.Module):
             new_pos_embed = new_pos_embed.reshape(1, self.original_embedding_dim, num_patches).transpose(1, 2) # 1 * 108 * 768
             # 1 * 110 * 768
             self.v.pos_embed = nn.Parameter(torch.cat([self.v.pos_embed[:, :self.cls_token_num, :].detach(), new_pos_embed], dim=1))
+
+            if print_structure:
+                store_model_structure_to_txt(model=self.v, output_path=os.path.join(PROJECT_PATH, 'output', 'finetuning', 'DeiTModel.txt'))
+                print_attributes(obj=self.v, atts=[], output_path=os.path.join(PROJECT_PATH, 'output', 'finetuning', 'DeiTModel_items.txt'))
+                print_attributes(
+                    obj=self.v,
+                    atts=[
+                        'num_classes', 'num_features', 'embed_dim', 'cls_token', 'patch_embed', 'pos_embed',
+                        'pos_drop', 'dist_token', 'norm', 'head', 'head_dist', 'training'
+                    ],
+                    output_path=os.path.join(PROJECT_PATH, 'output', 'finetuning', 'DeiTModel_attributes.txt')
+                )
     
     def get_shape(self, fstride, tstride, input_fdim, input_tdim, fshape, tshape):
         """get the shape of intermediate representation.
@@ -301,7 +313,7 @@ class ASTModel(nn.Module):
         # pass through the Transformer layers
         cls_tokens = self.v.cls_token.expand(B, -1, -1)  # stole cls_tokens impl from Phil Wang, thanks
         dist_token = self.v.dist_token.expand(B, -1, -1)
-        x = torch.cat((cls_tokens, dist_token, x), dim=1)
+        x = torch.cat((cls_tokens, dist_token, x), dim=1) # 12 * 514 * 768
         x = x + self.v.pos_embed
         x = self.v.pos_drop(x)
         for blk in self.v.blocks:
