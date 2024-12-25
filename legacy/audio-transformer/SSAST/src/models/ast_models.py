@@ -269,10 +269,54 @@ class ASTModel(nn.Module):
             raise Exception('Task unrecognized.')
     
     def finetuningavgtok(self, x):
-        pass
+        """Default fine-tuning choice
+        """
+        # 10 * 1 * 128 * 100
+        B = x.shape[0]
+        x = self.v.patch_embed(x) # 10 * 108 * 768
+        if self.cls_token_num == 2:
+            cls_tokens = self.v.cls_token.expand(B, -1, -1)
+            dist_token = self.v.dist_token.expand(B, -1, -1)
+            x = torch.cat((cls_tokens, dist_token, x), dim=1) # 10 * 110 * 768
+        else:
+            cls_tokens = self.v.cls_token.expand(B, -1, -1)
+            x = torch.cat((cls_tokens, x), dim=1)
+        x = x + self.v.pos_embed # 10 * 110 * 768
+        x = self.v.pos_drop(x) # 0.0 drop rate
+
+        for blk_id, blk in enumerate(self.v.blocks):
+            x = blk(x)
+        x = self.v.norm(x) # 10 * 110 * 768
+
+        # average output of all tokens except cls token(s)
+        x = torch.mean(x[:, self.cls_token_num:, :], dim=1) # 10 * 768
+        x = self.mlp_head(x) # 10 * 35
+        return x
         
     def finetuningcls(self, x):
-        pass
+        # 10 * 1 * 128 * 100
+        B = x.shape[0]
+        x = self.v.patch_embed(x) # 10 * 108 * 768
+        if self.cls_token_num == 2:
+            cls_tokens = self.v.cls_token.expand(B, -1, -1)
+            dist_token = self.v.dist_token.expand(B, -1, -1)
+            x = torch.cat((cls_tokens, dist_token, x), dim=1) # 10 * 110 * 768
+        else:
+            cls_tokens = self.v.cls_token.expand(B, -1, -1)
+            x = torch.cat((cls_tokens, x), dim=1)
+        x = x + self.v.pos_embed # 10 * 110 * 768
+        x = self.v.pos_drop(x) # 0.0 drop rate
+        for blk_id, blk in enumerate(self.v.blocks):
+            x = blk(x)
+        x = self.v.norm(x) # 10 * 110 * 768
+
+        # if models has two cls tokens (DEIT), average as the clip-level representation
+        if self.cls_token_num == 2:
+            x = (x[:, 0] + x[:, 1]) / 2 # 10 * 768
+        else:
+            x = x[:, 0]
+        x = self.mlp_head(x) # 10 * 35
+        return x
 
     def mpc(self, x, mask_patch, cluster, show_mask=False):
         """masked patch pretraining with discriminative objective
@@ -491,9 +535,10 @@ if __name__ == '__main__':
 
     # do finetuning, see src/traintest.py for our finetuning code
     test_input = torch.zeros([10, input_tdim, 128])
-    # prediction = ast_mdl(test_input, task='ft_avgtok')
+    prediction = ast_mdl(test_input, task='ft_avgtok') # default finetuning choice
+    prediction = ast_mdl(test_input, task='ft_cls')
     # output should in shape [batch_size, label_dim]
-    # print(prediction.shape)
+    print(prediction.shape)
     # calculate the loss, do back propagate, etc
 
     # # (optional) do some probe test
