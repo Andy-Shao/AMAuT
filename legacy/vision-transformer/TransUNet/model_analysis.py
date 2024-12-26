@@ -1,6 +1,8 @@
 import argparse
 import os
 
+import torch
+
 from lib.models import TransUNet
 from lib.toolkits import print_model
 
@@ -18,3 +20,7 @@ if __name__ == '__main__':
 
     transUNet = TransUNet()
     print_model(model=transUNet, output_path=os.path.join(args.output_path, 'TransUNet.txt'))
+
+    features = torch.ones(32, 3, 224, 224)
+    outputs = transUNet(features)
+    print('outputs shape is:', outputs.shape) # 32, 100, 224, 224

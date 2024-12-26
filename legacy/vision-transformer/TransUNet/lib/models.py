@@ -30,5 +30,5 @@ class TransUNet(nn.Module):
         self.in_features = 2048
     
     def forward(self, x):
-        _, feat = self.feature_extractor(x)
+        feat = self.feature_extractor(x)
         return feat
