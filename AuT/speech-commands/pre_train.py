@@ -19,21 +19,6 @@ from AuT.lib.model import AudioTransform, AudioClassifier, cal_model_tag
 from AuT.lib.loss import CrossEntropyLabelSmooth
 from AuT.lib.dataset import AudioTokenTransformer
 
-def store_model_structure_by_tb(tModel: nn.Module, cModel:nn.Module, input_tensor:torch.Tensor, log_dir:str) -> None:
-    from torch.utils.tensorboard.writer import SummaryWriter
-    import shutil
-
-    try:
-        if os.path.exists(log_dir): shutil.rmtree(log_dir)
-    except:
-        pass
-
-    writer = SummaryWriter(log_dir=log_dir)
-    writer.add_graph(model=tModel, input_to_model=input_tensor)
-    tmp = tModel(input_tensor)
-    writer.add_graph(model=cModel, input_to_model=tmp)
-    writer.close()
-
 def lr_scheduler(optimizer: torch.optim.Optimizer, epoch:int, max_epoch:int, gamma=10, power=0.75) -> optim.Optimizer:
     decay = (1 + gamma * epoch / max_epoch) ** (-power)
     for param_group in optimizer.param_groups:
@@ -114,8 +99,7 @@ if __name__ == '__main__':
     ap.add_argument('--output_weight_prefix', type=str, default='speech-commands')
 
     ap.add_argument('--wandb', action='store_true')
-    ap.add_argument('--seed', type=int, default=2024, help='random seed')
-    ap.add_argument('--model_topology', action='store_true')
+    ap.add_argument('--seed', type=int, default=2025, help='random seed')
 
     ap.add_argument('--max_epoch', type=int, default=200, help='max epoch')
     ap.add_argument('--interval_num', type=int, default=50, help='interval number')
@@ -196,13 +180,6 @@ if __name__ == '__main__':
         f', total weight number:{count_ttl_params(auTmodel) + count_ttl_params(clsmodel)}')
     loss_fn = CrossEntropyLabelSmooth(num_classes=args.class_num, use_gpu=torch.cuda.is_available(), epsilon=args.smooth)
     optimizer = build_optimizer(args=args, auT=auTmodel, auC=clsmodel)
-
-    if args.model_topology:
-        features, labels = next(iter(train_loader))
-        features = features.to(args.device)
-        store_model_structure_by_tb(
-            tModel=auTmodel, cModel=clsmodel, input_tensor=features, log_dir=relative_path(args, 'model_topology'))
-        exit()
 
     max_val_accu = 0.
     for epoch in range(args.max_epoch):
