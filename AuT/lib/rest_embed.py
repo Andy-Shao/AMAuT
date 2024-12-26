@@ -9,7 +9,7 @@ class Embedding(nn.Module):
         width = ng * 4
         self.restnet = RestNet50(cin=num_channels, embed_size=embed_size, width=width, ng=ng)
         self.drop_out = nn.Dropout(p=marsked_rate)
-        self.patch_embedding = nn.Conv1d(in_channels=width*6, out_channels=embed_size, kernel_size=1, stride=1, padding=0)
+        self.patch_embedding = nn.Conv1d(in_channels=width*8, out_channels=embed_size, kernel_size=1, stride=1, padding=0)
 
     def forward(self, x:torch.Tensor) -> torch.Tensor:
         batch_size, channel_num, token_num, token_len = x.size()
@@ -37,8 +37,8 @@ class RestNet50(nn.Module):
         for _ in range(6): self.layer1.append(RestNetBlock(cin=width*2, cout=width*2, cmid=width, ng=ng))
 
         self.layer2 = nn.ModuleList()
-        self.layer2.append(RestNetBlock(cin=width*2, cout=width*6, cmid=width*2, stride=2, ng=ng))
-        for _ in range(8): self.layer2.append(RestNetBlock(cin=width*6, cout=width*6, cmid=width*2, ng=ng))
+        self.layer2.append(RestNetBlock(cin=width*2, cout=width*8, cmid=width*2, stride=2, ng=ng))
+        for _ in range(8): self.layer2.append(RestNetBlock(cin=width*8, cout=width*8, cmid=width*2, ng=ng))
 
 
     def forward(self, x:torch.Tensor) -> torch.Tensor:
