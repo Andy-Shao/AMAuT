@@ -1,3 +1,7 @@
+# TransUNet Structure
+![figure](./images/TransUNet-structure.png)
+
+
 # Code reference
 + [TransUNet](https://github.com/Beckschen/TransUNet/tree/main)
 
