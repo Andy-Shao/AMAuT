@@ -27,8 +27,7 @@ class RestNet50(nn.Module):
         self.root = nn.Sequential(
             StdConv1d(in_channels=cin, out_channels=width, kernel_size=7, stride=2, bias=False, padding=3),
             nn.GroupNorm(32, width, eps=1e-6),
-            nn.ReLU(),
-            # nn.MaxPool1d(kernel_size=3, stride=2, padding=0)
+            nn.ReLU()
         )
 
         self.maxPool = nn.MaxPool1d(kernel_size=3, stride=2, padding=0)

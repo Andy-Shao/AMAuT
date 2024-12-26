@@ -159,14 +159,17 @@ if __name__ == '__main__':
     max_ms=1000
     sample_rate=16000
     n_mels=80
-    n_fft=400
+    n_fft=1024
     win_length=400
     hop_length=160
     mel_scale='slaney'
     tf_array = Components(transforms=[
         pad_trunc(max_ms=max_ms, sample_rate=sample_rate),
         time_shift(shift_limit=.17, is_random=True, is_bidirection=True),
-        a_transforms.MelSpectrogram(sample_rate=sample_rate, n_mels=n_mels, n_fft=n_fft, hop_length=hop_length), # 80 x 101
+        a_transforms.MelSpectrogram(
+            sample_rate=sample_rate, n_mels=n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
+            mel_scale=mel_scale
+        ), # 80 x 101
         AmplitudeToDB(top_db=80., max_out=2.),
         AudioTokenTransformer() if args.embed_mode == 'linear' else DoNothing()
     ])
@@ -178,7 +181,10 @@ if __name__ == '__main__':
 
     tf_array = Components(transforms=[
         pad_trunc(max_ms=max_ms, sample_rate=sample_rate),
-        a_transforms.MelSpectrogram(sample_rate=sample_rate, n_mels=n_mels, n_fft=n_fft, hop_length=hop_length),
+        a_transforms.MelSpectrogram(
+            sample_rate=sample_rate, n_mels=n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
+            mel_scale=mel_scale
+        ),
         AmplitudeToDB(top_db=80., max_out=2.),
         AudioTokenTransformer() if args.embed_mode == 'linear' else DoNothing()
     ])
