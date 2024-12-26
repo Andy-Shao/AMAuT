@@ -95,6 +95,6 @@ class FewShotSpeechCommand(Dataset):
     
     def __getitem__(self, index):
         if self.is_fs_mode:
-            return self.root_dataset[self.data_indexes[index]]
+            return self.root_dataset[int(self.data_indexes[index])]
         else:
             return self.root_dataset[index]
