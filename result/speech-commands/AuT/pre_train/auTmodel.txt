@@ -6,6 +6,7 @@ AudioTransform(
         (1): GroupNorm(32, 64, eps=1e-06, affine=True)
         (2): ReLU()
       )
+      (maxPool): MaxPool1d(kernel_size=3, stride=2, padding=0, dilation=1, ceil_mode=False)
       (layer1): ModuleList(
         (0): RestNetBlock(
           (conv1): StdConv1d(64, 64, kernel_size=(1,), stride=(1,), bias=False)

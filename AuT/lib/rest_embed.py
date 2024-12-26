@@ -31,6 +31,8 @@ class RestNet50(nn.Module):
             # nn.MaxPool1d(kernel_size=3, stride=2, padding=0)
         )
 
+        self.maxPool = nn.MaxPool1d(kernel_size=3, stride=2, padding=0)
+
         self.layer1 = nn.ModuleList()
         self.layer1.append(RestNetBlock(cin=width, cout=width*4, cmid=width))
         for _ in range(6): self.layer1.append(RestNetBlock(cin=width*4, cout=width*4, cmid=width))
@@ -42,6 +44,7 @@ class RestNet50(nn.Module):
 
     def forward(self, x:torch.Tensor) -> torch.Tensor:
         x = self.root(x)
+        x = self.maxPool(x)
         for l in self.layer1: x = l(x)
         for l in self.layer2: x = l(x)
         return x

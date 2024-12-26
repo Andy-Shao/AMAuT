@@ -77,7 +77,7 @@ def build_model(args:argparse.Namespace) -> tuple[nn.Module, nn.Module]:
     config = ConfigDict()
     config.embedding = ConfigDict()
     if args.embed_mode == 'linear':
-        config.embedding.in_token_len = 81
+        config.embedding.in_token_len = 101
         config.embedding.in_token_num = 80
         config.embedding.channel_num = 1
     elif args.embed_mode == 'restnet':
@@ -159,12 +159,14 @@ if __name__ == '__main__':
     max_ms=1000
     sample_rate=16000
     n_mels=80
-    n_fft=1024
-    hop_length=200
+    n_fft=400
+    win_length=400
+    hop_length=160
+    mel_scale='slaney'
     tf_array = Components(transforms=[
         pad_trunc(max_ms=max_ms, sample_rate=sample_rate),
         time_shift(shift_limit=.17, is_random=True, is_bidirection=True),
-        a_transforms.MelSpectrogram(sample_rate=sample_rate, n_mels=n_mels, n_fft=n_fft, hop_length=hop_length), # 80 x 81
+        a_transforms.MelSpectrogram(sample_rate=sample_rate, n_mels=n_mels, n_fft=n_fft, hop_length=hop_length), # 80 x 101
         AmplitudeToDB(top_db=80., max_out=2.),
         AudioTokenTransformer() if args.embed_mode == 'linear' else DoNothing()
     ])
