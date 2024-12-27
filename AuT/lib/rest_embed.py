@@ -4,11 +4,11 @@ import torch
 import torch.nn as nn
 
 class Embedding(nn.Module):
-    def __init__(self, num_channels:int, embed_size:int, marsked_rate:float, width=128) -> None:
+    def __init__(self, num_channels:int, embed_size:int, marsked_rate:float, width=128, num_layers=[6,8]) -> None:
         super(Embedding, self).__init__()
         ng = 32
         assert width % ng == 0, 'width must be dividable by the num_groups in GroupNorm.'
-        self.restnet = RestNet50(cin=num_channels, embed_size=embed_size, width=width, ng=ng)
+        self.restnet = RestNet(cin=num_channels, embed_size=embed_size, width=width, ng=ng, num_layers=num_layers)
         self.drop_out = nn.Dropout(p=marsked_rate)
         self.patch_embedding = nn.Conv1d(in_channels=width*8, out_channels=embed_size, kernel_size=1, stride=1, padding=0)
 
@@ -22,9 +22,9 @@ class Embedding(nn.Module):
 
         return x
     
-class RestNet50(nn.Module):
-    def __init__(self, cin:int, embed_size:int, width:int, ng:int) -> None:
-        super(RestNet50, self).__init__()
+class RestNet(nn.Module):
+    def __init__(self, cin:int, embed_size:int, width:int, ng:int, num_layers:list[int]) -> None:
+        super(RestNet, self).__init__()
         self.root = nn.Sequential(
             StdConv1d(in_channels=cin, out_channels=width, kernel_size=7, stride=2, bias=False, padding=3),
             nn.GroupNorm(ng, width, eps=1e-6),
@@ -35,11 +35,16 @@ class RestNet50(nn.Module):
 
         self.layer1 = nn.ModuleList()
         self.layer1.append(RestNetBlock(cin=width, cout=width*4, cmid=width, ng=ng))
-        for _ in range(6): self.layer1.append(RestNetBlock(cin=width*4, cout=width*4, cmid=width, ng=ng))
+        for _ in range(num_layers[0]): self.layer1.append(RestNetBlock(cin=width*4, cout=width*4, cmid=width, ng=ng))
 
         self.layer2 = nn.ModuleList()
         self.layer2.append(RestNetBlock(cin=width*4, cout=width*8, cmid=width*2, stride=2, ng=ng))
-        for _ in range(8): self.layer2.append(RestNetBlock(cin=width*8, cout=width*8, cmid=width*2, ng=ng))
+        for _ in range(num_layers[1]): self.layer2.append(RestNetBlock(cin=width*8, cout=width*8, cmid=width*2, ng=ng))
+
+        if len(num_layers) >= 3:
+            self.layer3 = nn.ModuleList()
+            self.layer3.append(RestNetBlock(cin=width*8, cout=width*16, cmid=width*4, stride=2, ng=ng))
+            for _ in range(num_layers[2]): self.layer3.append(RestNetBlock(cin=width*16, cout=width*16, cmid=width*2, ng=ng))
 
 
     def forward(self, x:torch.Tensor) -> torch.Tensor:
@@ -47,6 +52,8 @@ class RestNet50(nn.Module):
         x = self.maxPool(x)
         for l in self.layer1: x = l(x)
         for l in self.layer2: x = l(x)
+        if hasattr(self, 'layer3'):
+            for l in self.layer3: x = l(x)
         return x
 
 class RestNetBlock(nn.Module):
