@@ -4,9 +4,10 @@ import torch
 import torch.nn as nn
 
 class Embedding(nn.Module):
-    def __init__(self, num_channels:int, embed_size:int, marsked_rate:float, ng=32) -> None:
+    def __init__(self, num_channels:int, embed_size:int, marsked_rate:float, width=128) -> None:
         super(Embedding, self).__init__()
-        width = ng * 4
+        ng = 32
+        assert width % ng == 0, 'width must be dividable by the num_groups in GroupNorm.'
         self.restnet = RestNet50(cin=num_channels, embed_size=embed_size, width=width, ng=ng)
         self.drop_out = nn.Dropout(p=marsked_rate)
         self.patch_embedding = nn.Conv1d(in_channels=width*8, out_channels=embed_size, kernel_size=1, stride=1, padding=0)
@@ -33,11 +34,11 @@ class RestNet50(nn.Module):
         self.maxPool = nn.MaxPool1d(kernel_size=3, stride=2, padding=0)
 
         self.layer1 = nn.ModuleList()
-        self.layer1.append(RestNetBlock(cin=width, cout=width*2, cmid=width, ng=ng))
-        for _ in range(6): self.layer1.append(RestNetBlock(cin=width*2, cout=width*2, cmid=width, ng=ng))
+        self.layer1.append(RestNetBlock(cin=width, cout=width*4, cmid=width, ng=ng))
+        for _ in range(6): self.layer1.append(RestNetBlock(cin=width*4, cout=width*4, cmid=width, ng=ng))
 
         self.layer2 = nn.ModuleList()
-        self.layer2.append(RestNetBlock(cin=width*2, cout=width*8, cmid=width*2, stride=2, ng=ng))
+        self.layer2.append(RestNetBlock(cin=width*4, cout=width*8, cmid=width*2, stride=2, ng=ng))
         for _ in range(8): self.layer2.append(RestNetBlock(cin=width*8, cout=width*8, cmid=width*2, ng=ng))
 
 
