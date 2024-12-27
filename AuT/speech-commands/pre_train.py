@@ -13,7 +13,7 @@ import torch.nn as nn
 import torch.optim as optim
 
 from lib.toolkit import print_argparse, store_model_structure_to_txt, relative_path, count_ttl_params
-from lib.wavUtils import pad_trunc, Components, AmplitudeToDB, DoNothing, time_shift, MelSpectrogramPadding
+from lib.wavUtils import pad_trunc, Components, AmplitudeToDB, DoNothing, time_shift
 from lib.scDataset import SpeechCommandsDataset
 from AuT.lib.model import AudioTransform, AudioClassifier, cal_model_tag
 from AuT.lib.loss import CrossEntropyLabelSmooth
@@ -59,7 +59,7 @@ def build_optimizer(args: argparse.Namespace, auT:nn.Module, auC:nn.Module) -> o
     optimizer = op_copy(optimizer)
     return optimizer
 
-def build_model(args:argparse.Namespace) -> tuple[nn.Module, nn.Module]:
+def build_model(args:argparse.Namespace) -> tuple[AudioTransform, AudioClassifier]:
     def transformer_cfg(args:argparse.Namespace, cfg:ConfigDict) -> None:
         cfg.transform = ConfigDict()
         cfg.transform.layer_num = 12 if args.embed_size == 768 else 24
