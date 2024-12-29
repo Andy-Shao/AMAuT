@@ -150,7 +150,7 @@ class MelSpectrogramPadding(nn.Module):
         self.target_length = target_length
 
     def forward(self, x:torch.Tensor) -> torch.Tensor:
-        p = self.target_length - x.shape[1]
+        p = self.target_length - x.shape[2]
         if p > 0:
             padding = nn.ZeroPad1d((0, p, 0, 0))
             x = padding(x)
