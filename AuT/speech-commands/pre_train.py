@@ -13,7 +13,7 @@ import torch.nn as nn
 import torch.optim as optim
 
 from lib.toolkit import print_argparse, store_model_structure_to_txt, relative_path, count_ttl_params
-from lib.wavUtils import pad_trunc, Components, AmplitudeToDB, DoNothing, time_shift
+from lib.wavUtils import pad_trunc, Components, AmplitudeToDB, DoNothing, time_shift, MelSpectrogramPadding
 from lib.scDataset import SpeechCommandsDataset
 from AuT.lib.model import AudioTransform, AudioClassifier, cal_model_tag
 from AuT.lib.loss import CrossEntropyLabelSmooth
@@ -52,7 +52,7 @@ def build_optimizer(args: argparse.Namespace, auT:nn.Module, auC:nn.Module) -> o
     param_group = []
     learning_rate = args.lr
     for k, v in auT.named_parameters():
-        param_group += [{'params':v, 'lr':learning_rate * .1}]
+        param_group += [{'params':v, 'lr':learning_rate}]
     for k, v in auC.named_parameters():
         param_group += [{'params':v, 'lr':learning_rate}]
     optimizer = optim.SGD(params=param_group)
@@ -77,7 +77,7 @@ def build_model(args:argparse.Namespace) -> tuple[AudioTransform, AudioClassifie
     config = ConfigDict()
     config.embedding = ConfigDict()
     if args.embed_mode == 'linear':
-        config.embedding.in_token_len = 101
+        config.embedding.in_token_len = 104
         config.embedding.in_token_num = 80
         config.embedding.channel_num = 1
     elif args.embed_mode == 'restnet':
@@ -161,16 +161,18 @@ if __name__ == '__main__':
     n_mels=80
     n_fft=1024
     win_length=400
-    hop_length=160
+    hop_length=155
     mel_scale='slaney'
+    target_length=104
     tf_array = Components(transforms=[
         pad_trunc(max_ms=max_ms, sample_rate=sample_rate),
         time_shift(shift_limit=.17, is_random=True, is_bidirection=True),
         a_transforms.MelSpectrogram(
             sample_rate=sample_rate, n_mels=n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
             mel_scale=mel_scale
-        ), # 80 x 101
+        ), # 80 x 104
         AmplitudeToDB(top_db=80., max_out=2.),
+        MelSpectrogramPadding(target_length=target_length),
         AudioTokenTransformer() if args.embed_mode == 'linear' else DoNothing()
     ])
 
@@ -186,6 +188,7 @@ if __name__ == '__main__':
             mel_scale=mel_scale
         ),
         AmplitudeToDB(top_db=80., max_out=2.),
+        MelSpectrogramPadding(target_length=target_length),
         AudioTokenTransformer() if args.embed_mode == 'linear' else DoNothing()
     ])
     val_dataset = build_dataest(args=args, tsf=tf_array, mode='test')
