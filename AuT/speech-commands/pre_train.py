@@ -66,7 +66,7 @@ def build_model(args:argparse.Namespace) -> tuple[AudioTransform, AudioClassifie
         cfg.transform.head_num = 12 if args.embed_size == 768 else 16
         cfg.transform.atten_drop_rate = .0
         cfg.transform.mlp_mid = 3072 if args.embed_size == 768 else 4096
-        cfg.transform.mlp_dp_rt = .1
+        cfg.transform.mlp_dp_rt = .0
     
     def classifier_cfg(args:argparse.Namespace, cfg:ConfigDict) -> None:
         cfg.classifier = ConfigDict()
