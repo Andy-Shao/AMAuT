@@ -8,10 +8,12 @@ from .embedding import Embedding
 from .rest_embed import Embedding as RestEmbedding
 
 def cal_model_tag(dataset_tag:str, embed_mode:str) -> str:
-    assert dataset_tag in ['speech-commands', 'speech-commands-purity', 'speech-commands-random', 'speech-commands-numbers'], 'No support'
+    assert dataset_tag in ['speech-commands', 'speech-commands-random', 'speech-commands-numbers'], 'No support'
     model_tag = embed_mode
     if dataset_tag == 'speech-commands':
         model_tag += '-SC'
+    else: 
+        raise Exception('No support!')
     return model_tag
 
 def init_weights(m: nn.Module):
@@ -76,12 +78,12 @@ class AudioTransform(nn.Module):
         self.tf_norm = nn.LayerNorm(embed_size, eps=1e-6)
         self.layers = nn.ModuleList([AttentionBlock(config) for _ in range(config.transform['layer_num'])])
 
-    def forward(self, x:torch.Tensor) -> torch.Tensor:
-        x = self.embedding(x)
+    def forward(self, x:torch.Tensor) -> tuple[torch.Tensor, list[torch.Tensor]]:
+        x, features = self.embedding(x)
         for layer in self.layers:
             x = layer(x)
         x = self.tf_norm(x)
-        return x
+        return x, features
 
 class AttentionBlock(nn.Module):
     def __init__(self, config:ConfigDict) -> None:
@@ -174,3 +176,71 @@ class MultiHeadAttention(nn.Module):
     #     attention = torch.softmax(scores, dim=-1)
 
     #     return torch.matmul(attention, V)
+
+class Decoder(nn.Module):
+    def __init__(self, config:ConfigDict):
+        super(Decoder, self).__init__()
+        in_channels = config.decoder['in_channels']
+        out_channels = config.decoder['out_channels']
+        skip_channels = config.decoder['skip_channels']
+        self.conv_more = Conv1dReLU(
+            in_channels=config.decoder['hidden_size'],
+            out_channels=out_channels[0],
+            kenerl_size=3,
+            padding=1,
+            use_batchnorm=True
+        )
+        self.blocks = nn.ModuleList([
+            DecoderBlock(
+                in_channels=in_ch, out_channels=out_ch, skip_channles=sk_ch
+            ) for in_ch, out_ch, sk_ch in zip(in_channels, out_channels, skip_channels)
+        ])
+
+    def forward(self, x:torch.Tensor, features:list[torch.Tensor]) -> torch.Tensor:
+        x = x.permute(0, 2, 1)
+        x = self.conv_more(x)
+        for i, block in enumerate(self.blocks):
+            skip = features[i]
+            x = block(x, skip=skip)
+        return x
+
+class DecoderBlock(nn.Module):
+    def __init__(
+            self, in_channels:int, out_channels:int, skip_channles=0, use_batchnorm=True,
+        ):
+        super(DecoderBlock, self).__init__()
+        self.conv1 = Conv1dReLU(
+            in_channels=in_channels+skip_channles,
+            out_channels=out_channels,
+            kenerl_size=3,
+            padding=1,
+            use_batchnorm=use_batchnorm
+        )
+        self.conv2 = Conv1dReLU(
+            in_channels=out_channels,
+            out_channels=out_channels,
+            kenerl_size=3,
+            padding=1,
+            use_batchnorm=use_batchnorm
+        )
+        # self.up = nn.UpsamplingBilinear2d
+        self.up = nn.Upsample(scale_factor=2, mode='linear')
+
+    def forward(self, x:torch.Tensor, skip:torch.Tensor=None) -> torch.Tensor:
+        x = self.up(x)
+        if skip is not None: x = torch.cat([x, skip], dim=1)
+        x = self.conv1(x)
+        x = self.conv2(x)
+        return x
+
+class Conv1dReLU(nn.Sequential):
+    def __init__(
+            self, in_channels:int, out_channels:int, kenerl_size:int, padding=0, stride=1, use_batchnorm=True
+        ):
+        conv = nn.Conv1d(
+            in_channels=in_channels, out_channels=out_channels, kenerl_size=kenerl_size, stride=stride,
+            padding=padding, bias=not (use_batchnorm)
+        )
+        relu = nn.ReLU(inplace=True)
+        bn = nn.BatchNorm1d(num_features=out_channels)
+        super(Conv1dReLU, self).__init__(conv, bn, relu)

@@ -6,6 +6,15 @@ from torch.utils.data import Dataset
 
 from lib.scDataset import SpeechCommandsDataset
 
+class FrequenceTokenTransformer(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x:torch.Tensor) -> torch.Tensor:
+        batch_size, c, token_num, token_len = x.size()
+        x = x.reshape(batch_size, -1, token_len)
+        return x
+
 class AudioTokenTransformer(nn.Module):
     def __init__(self) -> None:
         super(AudioTokenTransformer, self).__init__()

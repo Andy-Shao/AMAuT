@@ -13,16 +13,16 @@ class Embedding(nn.Module):
         self.drop_out = nn.Dropout(p=marsked_rate)
         self.patch_embedding = nn.Conv1d(in_channels=width*8, out_channels=embed_size, kernel_size=1, stride=1, padding=0)
 
-    def forward(self, x:torch.Tensor) -> torch.Tensor:
+    def forward(self, x:torch.Tensor) -> tuple[torch.Tensor, list[torch.Tensor]]:
         batch_size, channel_num, token_num, token_len = x.size()
         x = self.drop_out(x)
         x = x.reshape(batch_size, -1, token_len)
-        x = self.restnet(x)
+        x, features = self.restnet(x)
         x = self.patch_embedding(x)
         x = x.transpose(2, 1)
         # x = self.drop_out(x)
 
-        return x
+        return x, features
     
 class RestNet(nn.Module):
     def __init__(self, cin:int, embed_size:int, width:int, ng:int, num_layers:list[int]) -> None:
@@ -49,14 +49,23 @@ class RestNet(nn.Module):
             for _ in range(num_layers[2]): self.layer3.append(RestNetBlock(cin=width*16, cout=width*16, cmid=width*2, ng=ng))
 
 
-    def forward(self, x:torch.Tensor) -> torch.Tensor:
+    def forward(self, x:torch.Tensor) -> tuple[torch.Tensor, list[torch.Tensor]]:
+        features = []
         x = self.root(x)
+        features.append(x)
+
         x = self.maxPool(x)
         for l in self.layer1: x = l(x)
+        features.append(x)
+
         for l in self.layer2: x = l(x)
+        features.append(x)
+
         if hasattr(self, 'layer3'):
             for l in self.layer3: x = l(x)
-        return x
+            features.append(x)
+
+        return x, features[::-1]
 
 class RestNetBlock(nn.Module):
     def __init__(self, cin:int, cout:int, cmid:int, ng:int, stride=1) -> None:

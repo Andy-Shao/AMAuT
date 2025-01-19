@@ -229,7 +229,8 @@ if __name__ == '__main__':
             features, labels = features.to(args.device), labels.to(args.device)
 
             optimizer.zero_grad()
-            outputs = clsmodel(auTmodel(features))
+            attens, fs = auTmodel(features)
+            outputs = clsmodel(attens)
             loss = loss_fn(outputs, labels)
             loss.backward()
             optimizer.step()
@@ -253,7 +254,8 @@ if __name__ == '__main__':
             features, labels = features.to(args.device), labels.to(args.device)
 
             with torch.no_grad():
-                outputs = clsmodel(auTmodel(features))
+                attens, fs = auTmodel(features)
+                outputs = clsmodel(attens)
                 _, preds = torch.max(outputs.detach(), dim=1)
             ttl_val_size += labels.shape[0]
             ttl_val_corr += (preds == labels).sum().cpu().item()
