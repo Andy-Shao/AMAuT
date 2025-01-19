@@ -15,11 +15,12 @@ class Embedding(nn.Module):
 
     def forward(self, x:torch.Tensor) -> torch.Tensor:
         batch_size, channel_num, token_num, token_len = x.size()
+        x = self.drop_out(x)
         x = x.reshape(batch_size, -1, token_len)
         x = self.restnet(x)
         x = self.patch_embedding(x)
         x = x.transpose(2, 1)
-        x = self.drop_out(x)
+        # x = self.drop_out(x)
 
         return x
     
@@ -129,7 +130,7 @@ class RandomMask(nn.Module):
         max_width = width / self.w[0]
         max_height = height / self.w[1]
         win_num = (width * height) // (self.w[0] * self.w[1])
-        mask_num = ((width * height) * self.p) // (self.w[0] * self.w[1])
+        mask_num = (width * height * self.p) // (self.w[0] * self.w[1])
         mask_index = random.sample(range(0, win_num), k=mask_num)
         for i in mask_index:
             h = i % max_width
