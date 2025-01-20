@@ -1,0 +1,48 @@
+AudioDecoder(
+  (conv_more): Conv1dReLU(
+    (0): Conv1d(768, 512, kernel_size=(3,), stride=(1,), padding=(1,), bias=False)
+    (1): BatchNorm1d(512, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (2): ReLU(inplace=True)
+  )
+  (blocks): ModuleList(
+    (0): DecoderBlock(
+      (conv1): Conv1dReLU(
+        (0): Conv1d(1024, 128, kernel_size=(3,), stride=(1,), padding=(1,), bias=False)
+        (1): BatchNorm1d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (2): ReLU(inplace=True)
+      )
+      (conv2): Conv1dReLU(
+        (0): Conv1d(128, 128, kernel_size=(3,), stride=(1,), padding=(1,), bias=False)
+        (1): BatchNorm1d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (2): ReLU(inplace=True)
+      )
+      (up): Upsample(scale_factor=2.0, mode='linear')
+    )
+    (1): DecoderBlock(
+      (conv1): Conv1dReLU(
+        (0): Conv1d(256, 128, kernel_size=(3,), stride=(1,), padding=(1,), bias=False)
+        (1): BatchNorm1d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (2): ReLU(inplace=True)
+      )
+      (conv2): Conv1dReLU(
+        (0): Conv1d(128, 128, kernel_size=(3,), stride=(1,), padding=(1,), bias=False)
+        (1): BatchNorm1d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (2): ReLU(inplace=True)
+      )
+      (up): Upsample(scale_factor=2.0, mode='linear')
+    )
+    (2): DecoderBlock(
+      (conv1): Conv1dReLU(
+        (0): Conv1d(128, 80, kernel_size=(3,), stride=(1,), padding=(1,), bias=False)
+        (1): BatchNorm1d(80, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (2): ReLU(inplace=True)
+      )
+      (conv2): Conv1dReLU(
+        (0): Conv1d(80, 80, kernel_size=(3,), stride=(1,), padding=(1,), bias=False)
+        (1): BatchNorm1d(80, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (2): ReLU(inplace=True)
+      )
+      (up): Upsample(scale_factor=2.0, mode='linear')
+    )
+  )
+)

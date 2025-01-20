@@ -14,15 +14,15 @@ class Embedding(nn.Module):
         self.patch_embedding = nn.Conv1d(in_channels=width*8, out_channels=embed_size, kernel_size=1, stride=1, padding=0)
 
     def forward(self, x:torch.Tensor) -> tuple[torch.Tensor, list[torch.Tensor]]:
-        batch_size, channel_num, token_num, token_len = x.size()
+        # batch_size, channel_num, token_num, token_len = x.size()
         x = self.drop_out(x)
-        x = x.reshape(batch_size, -1, token_len)
-        x, features = self.restnet(x)
+        # x = x.reshape(batch_size, -1, token_len)
+        x, hidden_attens = self.restnet(x)
         x = self.patch_embedding(x)
         x = x.transpose(2, 1)
         # x = self.drop_out(x)
 
-        return x, features
+        return x, hidden_attens
     
 class RestNet(nn.Module):
     def __init__(self, cin:int, embed_size:int, width:int, ng:int, num_layers:list[int]) -> None:
@@ -50,22 +50,39 @@ class RestNet(nn.Module):
 
 
     def forward(self, x:torch.Tensor) -> tuple[torch.Tensor, list[torch.Tensor]]:
-        features = []
+        batch_size, token_num, token_len = x.size()
+        hidden_attens = []
         x = self.root(x)
-        features.append(x)
+        hidden_attens.append(x)
 
         x = self.maxPool(x)
         for l in self.layer1: x = l(x)
-        features.append(x)
-
+        
+        right_tl = token_len // 4
+        hidden_attens.append(self.format_attens(x, right_tl))
         for l in self.layer2: x = l(x)
-        features.append(x)
 
         if hasattr(self, 'layer3'):
+            right_tl = right_tl // 2
+            hidden_attens.append(self.format_attens(x, right_tl))
             for l in self.layer3: x = l(x)
-            features.append(x)
+            hidden_attens.append(x)
 
-        return x, features[::-1]
+        return x, hidden_attens[::-1]
+    
+    def format_attens(self, x:torch.Tensor, right_token_len:int) -> torch.Tensor:
+        import torch.nn.functional as F
+        pad = right_token_len - x.shape[2]
+        assert pad < 3 and pad >= 0, f'hidden attention is incorrect: {right_token_len} - {x.shape[2]}'
+        if pad == 0: 
+            hidden_atten = x
+        else:
+            # low efficient code:
+            # hidden_atten = torch.zeros(x.shape[0], x.shape[1], right_token_len).to(x.device)
+            # hidden_atten[:, :, 0:x.shape[2]] = x[:]
+            
+            hidden_atten = F.pad(x, (0, 1, 0, 0), mode='constant', value=0)
+        return hidden_atten
 
 class RestNetBlock(nn.Module):
     def __init__(self, cin:int, cout:int, cmid:int, ng:int, stride=1) -> None:

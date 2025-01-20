@@ -177,16 +177,16 @@ class MultiHeadAttention(nn.Module):
 
     #     return torch.matmul(attention, V)
 
-class Decoder(nn.Module):
+class AudioDecoder(nn.Module):
     def __init__(self, config:ConfigDict):
-        super(Decoder, self).__init__()
+        super(AudioDecoder, self).__init__()
         in_channels = config.decoder['in_channels']
         out_channels = config.decoder['out_channels']
         skip_channels = config.decoder['skip_channels']
         self.conv_more = Conv1dReLU(
             in_channels=config.decoder['hidden_size'],
-            out_channels=out_channels[0],
-            kenerl_size=3,
+            out_channels=in_channels[0],
+            kernel_size=3,
             padding=1,
             use_batchnorm=True
         )
@@ -200,7 +200,8 @@ class Decoder(nn.Module):
         x = x.permute(0, 2, 1)
         x = self.conv_more(x)
         for i, block in enumerate(self.blocks):
-            skip = features[i]
+            if i == len(self.blocks)-1: skip = None
+            else: skip = features[i]
             x = block(x, skip=skip)
         return x
 
@@ -212,14 +213,14 @@ class DecoderBlock(nn.Module):
         self.conv1 = Conv1dReLU(
             in_channels=in_channels+skip_channles,
             out_channels=out_channels,
-            kenerl_size=3,
+            kernel_size=3,
             padding=1,
             use_batchnorm=use_batchnorm
         )
         self.conv2 = Conv1dReLU(
             in_channels=out_channels,
             out_channels=out_channels,
-            kenerl_size=3,
+            kernel_size=3,
             padding=1,
             use_batchnorm=use_batchnorm
         )
@@ -235,10 +236,10 @@ class DecoderBlock(nn.Module):
 
 class Conv1dReLU(nn.Sequential):
     def __init__(
-            self, in_channels:int, out_channels:int, kenerl_size:int, padding=0, stride=1, use_batchnorm=True
+            self, in_channels:int, out_channels:int, kernel_size:int, padding=0, stride=1, use_batchnorm=True
         ):
         conv = nn.Conv1d(
-            in_channels=in_channels, out_channels=out_channels, kenerl_size=kenerl_size, stride=stride,
+            in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=stride,
             padding=padding, bias=not (use_batchnorm)
         )
         relu = nn.ReLU(inplace=True)

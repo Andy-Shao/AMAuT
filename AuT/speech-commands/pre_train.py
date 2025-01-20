@@ -15,9 +15,9 @@ import torch.optim as optim
 from lib.toolkit import print_argparse, store_model_structure_to_txt, relative_path, count_ttl_params
 from lib.wavUtils import pad_trunc, Components, AmplitudeToDB, DoNothing, time_shift, MelSpectrogramPadding
 from lib.scDataset import SpeechCommandsDataset
-from AuT.lib.model import AudioTransform, AudioClassifier, cal_model_tag
+from AuT.lib.model import AudioTransform, AudioClassifier, cal_model_tag, AudioDecoder
 from AuT.lib.loss import CrossEntropyLabelSmooth
-from AuT.lib.dataset import AudioTokenTransformer
+from AuT.lib.dataset import AudioTokenTransformer, FrequenceTokenTransformer
 
 def store_model_structure_by_tb(tModel: nn.Module, cModel:nn.Module, input_tensor:torch.Tensor, log_dir:str) -> None:
     from torch.utils.tensorboard.writer import SummaryWriter
@@ -59,7 +59,7 @@ def build_optimizer(args: argparse.Namespace, auT:nn.Module, auC:nn.Module) -> o
     optimizer = op_copy(optimizer)
     return optimizer
 
-def build_model(args:argparse.Namespace) -> tuple[AudioTransform, AudioClassifier]:
+def build_model(args:argparse.Namespace) -> tuple[AudioTransform, AudioClassifier, AudioDecoder]:
     def transformer_cfg(args:argparse.Namespace, cfg:ConfigDict) -> None:
         cfg.transform = ConfigDict()
         cfg.transform.layer_num = 12 if args.embed_size == 768 else 24
@@ -73,6 +73,14 @@ def build_model(args:argparse.Namespace) -> tuple[AudioTransform, AudioClassifie
         cfg.classifier.class_num = args.class_num
         cfg.classifier.extend_size = 2048
         cfg.classifier.convergent_size = 256
+
+    def decoder_cfg(args:argparse.Namespace, cfg:ConfigDict) -> None:
+        decoder = ConfigDict()
+        decoder.in_channels = [512, 128, 128]
+        decoder.out_channels = [128, 128, 80]
+        decoder.skip_channels = [512, 128, 0]
+        decoder.hidden_size = args.embed_size
+        cfg.decoder = decoder
 
     config = ConfigDict()
     config.embedding = ConfigDict()
@@ -88,11 +96,13 @@ def build_model(args:argparse.Namespace) -> tuple[AudioTransform, AudioClassifie
 
     transformer_cfg(args, config)
     classifier_cfg(args, config)
+    decoder_cfg(args, config)
 
     auTmodel = AudioTransform(config=config).to(device=args.device)
     clsmodel = AudioClassifier(config=config).to(device=args.device)
+    auDecoder = AudioDecoder(config=config).to(device=args.device)
 
-    return auTmodel, clsmodel
+    return auTmodel, clsmodel, auDecoder
 
 def build_dataest(args:argparse.Namespace, tsf:nn.Module, mode:str) -> Dataset:
     if args.dataset == 'speech-commands-random':
@@ -173,7 +183,7 @@ if __name__ == '__main__':
         ), # 80 x 104
         AmplitudeToDB(top_db=80., max_out=2.),
         MelSpectrogramPadding(target_length=target_length),
-        AudioTokenTransformer() if args.embed_mode == 'linear' else DoNothing()
+        AudioTokenTransformer() if args.embed_mode == 'linear' else FrequenceTokenTransformer()
     ])
 
     train_dataset = build_dataest(args=args, tsf=tf_array, mode='train')
@@ -189,7 +199,7 @@ if __name__ == '__main__':
         ),
         AmplitudeToDB(top_db=80., max_out=2.),
         MelSpectrogramPadding(target_length=target_length),
-        AudioTokenTransformer() if args.embed_mode == 'linear' else DoNothing()
+        AudioTokenTransformer() if args.embed_mode == 'linear' else FrequenceTokenTransformer()
     ])
     val_dataset = build_dataest(args=args, tsf=tf_array, mode='test')
     val_loader = DataLoader(
@@ -198,13 +208,15 @@ if __name__ == '__main__':
 
     interval = args.max_epoch // args.interval_num
 
-    auTmodel, clsmodel = build_model(args=args)
+    auTmodel, clsmodel, auDecoder = build_model(args=args)
     store_model_structure_to_txt(model=auTmodel, output_path=relative_path(args, 'auTmodel.txt'))
     store_model_structure_to_txt(model=clsmodel, output_path=relative_path(args, 'clsmodel.txt'))
+    store_model_structure_to_txt(model=auDecoder, output_path=relative_path(args, 'auDecoder.txt'))
     print(
         f'auT weight number:{count_ttl_params(auTmodel)}',
         f', auC weight number:{count_ttl_params(clsmodel)}',
-        f', total weight number:{count_ttl_params(auTmodel) + count_ttl_params(clsmodel)}')
+        f', auD weight number:{count_ttl_params(auDecoder)}',
+        f', total weight number:{count_ttl_params(auTmodel) + count_ttl_params(clsmodel) + count_ttl_params(auDecoder)}')
     loss_fn = CrossEntropyLabelSmooth(num_classes=args.class_num, use_gpu=torch.cuda.is_available(), epsilon=args.smooth)
     optimizer = build_optimizer(args=args, auT=auTmodel, auC=clsmodel)
 
@@ -225,12 +237,15 @@ if __name__ == '__main__':
         ttl_train_loss = 0.
         auTmodel.train()
         clsmodel.train()
+        auDecoder.train()
         for features, labels in tqdm(train_loader):
             features, labels = features.to(args.device), labels.to(args.device)
+            org_fts = torch.clone(features).detach().to(args.device)
 
             optimizer.zero_grad()
-            attens, fs = auTmodel(features)
+            attens, hidden_attens = auTmodel(features)
             outputs = clsmodel(attens)
+            gen_fts = auDecoder(attens, hidden_attens)
             loss = loss_fn(outputs, labels)
             loss.backward()
             optimizer.step()
@@ -254,7 +269,7 @@ if __name__ == '__main__':
             features, labels = features.to(args.device), labels.to(args.device)
 
             with torch.no_grad():
-                attens, fs = auTmodel(features)
+                attens, _ = auTmodel(features)
                 outputs = clsmodel(attens)
                 _, preds = torch.max(outputs.detach(), dim=1)
             ttl_val_size += labels.shape[0]
