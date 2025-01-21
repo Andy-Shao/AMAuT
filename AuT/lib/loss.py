@@ -2,6 +2,22 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+class CosineSimilarityLoss(nn.Module):
+    def __init__(self, reduction:str='mean', dim=2):
+        super(CosineSimilarityLoss, self).__init__()
+        assert reduction in ['mean', 'sum'], 'reduction is incorrect'
+        self.cos_sim = nn.CosineSimilarity(dim=dim)
+        self.reduction = reduction
+
+    def forward(self, input:torch.Tensor, target:torch.Tensor) -> torch.Tensor:
+        similarity = self.cos_sim(input, target)
+        loss = 1 - similarity
+        if self.reduction == 'mean':
+            loss = loss.mean()
+        elif self.reduction == 'sum':
+            loss = loss.sum()
+        return loss
+
 class CrossEntropyLabelSmooth(nn.Module):
     """Cross entropy loss with label smoothing regularizer.
     Reference:

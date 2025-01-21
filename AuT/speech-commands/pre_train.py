@@ -16,7 +16,7 @@ from lib.toolkit import print_argparse, store_model_structure_to_txt, relative_p
 from lib.wavUtils import pad_trunc, Components, AmplitudeToDB, DoNothing, time_shift, MelSpectrogramPadding
 from lib.scDataset import SpeechCommandsDataset
 from AuT.lib.model import AudioTransform, AudioClassifier, cal_model_tag, AudioDecoder
-from AuT.lib.loss import CrossEntropyLabelSmooth
+from AuT.lib.loss import CrossEntropyLabelSmooth, CosineSimilarityLoss
 from AuT.lib.dataset import AudioTokenTransformer, FrequenceTokenTransformer
 
 def store_model_structure_by_tb(tModel: nn.Module, cModel:nn.Module, input_tensor:torch.Tensor, log_dir:str) -> None:
@@ -48,12 +48,14 @@ def op_copy(optimizer: optim.Optimizer) -> optim.Optimizer:
         param_group['lr0'] = param_group['lr']
     return optimizer
 
-def build_optimizer(args: argparse.Namespace, auT:nn.Module, auC:nn.Module) -> optim.Optimizer:
+def build_optimizer(args: argparse.Namespace, auT:nn.Module, auC:nn.Module, auD:AudioDecoder) -> optim.Optimizer:
     param_group = []
     learning_rate = args.lr
     for k, v in auT.named_parameters():
         param_group += [{'params':v, 'lr':learning_rate}]
     for k, v in auC.named_parameters():
+        param_group += [{'params':v, 'lr':learning_rate}]
+    for k, v in auD.named_parameters():
         param_group += [{'params':v, 'lr':learning_rate}]
     optimizer = optim.SGD(params=param_group)
     optimizer = op_copy(optimizer)
@@ -77,7 +79,7 @@ def build_model(args:argparse.Namespace) -> tuple[AudioTransform, AudioClassifie
     def decoder_cfg(args:argparse.Namespace, cfg:ConfigDict) -> None:
         decoder = ConfigDict()
         decoder.in_channels = [512, 128, 128]
-        decoder.out_channels = [128, 128, 80]
+        decoder.out_channels = [128, 128, args.n_mels]
         decoder.skip_channels = [512, 128, 0]
         decoder.hidden_size = args.embed_size
         cfg.decoder = decoder
@@ -86,10 +88,10 @@ def build_model(args:argparse.Namespace) -> tuple[AudioTransform, AudioClassifie
     config.embedding = ConfigDict()
     if args.embed_mode == 'linear':
         config.embedding.in_token_len = 104
-        config.embedding.in_token_num = 80
+        config.embedding.in_token_num = args.n_mels
         config.embedding.channel_num = 1
     elif args.embed_mode == 'restnet':
-        config.embedding.channel_num = 80
+        config.embedding.channel_num = args.n_mels
     config.embedding.marsked_rate = .15
     config.embedding.embed_size = args.embed_size
     config.embedding.mode = args.embed_mode # restnet or linear
@@ -116,7 +118,7 @@ def build_dataest(args:argparse.Namespace, tsf:nn.Module, mode:str) -> Dataset:
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
-    ap.add_argument('--dataset', type=str, default='speech-commands', choices=['speech-commands', 'speech-commands-purity', 'speech-commands-random', 'speech-commands-numbers'])
+    ap.add_argument('--dataset', type=str, default='speech-commands', choices=['speech-commands'])
     ap.add_argument('--dataset_root_path', type=str)
     ap.add_argument('--num_workers', type=int, default=16)
     ap.add_argument('--output_path', type=str, default='./result')
@@ -137,15 +139,11 @@ if __name__ == '__main__':
     ap.add_argument('--embed_size', type=int, default=768, choices=[768, 1024])
 
     args = ap.parse_args()
-    if args.dataset == 'speech-commands' or args.dataset == 'speech-commands-random':
+    if args.dataset == 'speech-commands':
         args.class_num = 30
         args.dataset_type = 'all'
-    elif args.dataset == 'speech-commands-purity':
-        args.class_num = 10
-        args.dataset_type = 'commands'
-    elif args.dataset == 'speech-commands-numbers':
-        args.class_num = 10
-        args.dataset_type = 'numbers'
+    else:
+        raise Exception('No support!')
     args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
     args.full_output_path = os.path.join(args.output_path, args.dataset, 'AuT', 'pre_train')
     try:
@@ -168,7 +166,7 @@ if __name__ == '__main__':
     
     max_ms=1000
     sample_rate=16000
-    n_mels=80
+    args.n_mels=80
     n_fft=1024
     win_length=400
     hop_length=155
@@ -178,7 +176,7 @@ if __name__ == '__main__':
         pad_trunc(max_ms=max_ms, sample_rate=sample_rate),
         time_shift(shift_limit=.17, is_random=True, is_bidirection=True),
         a_transforms.MelSpectrogram(
-            sample_rate=sample_rate, n_mels=n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
+            sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
             mel_scale=mel_scale
         ), # 80 x 104
         AmplitudeToDB(top_db=80., max_out=2.),
@@ -194,7 +192,7 @@ if __name__ == '__main__':
     tf_array = Components(transforms=[
         pad_trunc(max_ms=max_ms, sample_rate=sample_rate),
         a_transforms.MelSpectrogram(
-            sample_rate=sample_rate, n_mels=n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
+            sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
             mel_scale=mel_scale
         ),
         AmplitudeToDB(top_db=80., max_out=2.),
@@ -218,7 +216,8 @@ if __name__ == '__main__':
         f', auD weight number:{count_ttl_params(auDecoder)}',
         f', total weight number:{count_ttl_params(auTmodel) + count_ttl_params(clsmodel) + count_ttl_params(auDecoder)}')
     loss_fn = CrossEntropyLabelSmooth(num_classes=args.class_num, use_gpu=torch.cuda.is_available(), epsilon=args.smooth)
-    optimizer = build_optimizer(args=args, auT=auTmodel, auC=clsmodel)
+    decoder_loss_fn = nn.MSELoss(reduction='mean').to(device=args.device)
+    optimizer = build_optimizer(args=args, auT=auTmodel, auC=clsmodel, auD=auDecoder)
 
     if args.model_topology:
         features, labels = next(iter(train_loader))
@@ -246,7 +245,7 @@ if __name__ == '__main__':
             attens, hidden_attens = auTmodel(features)
             outputs = clsmodel(attens)
             gen_fts = auDecoder(attens, hidden_attens)
-            loss = loss_fn(outputs, labels)
+            loss = loss_fn(outputs, labels) + decoder_loss_fn(gen_fts, org_fts)
             loss.backward()
             optimizer.step()
 
