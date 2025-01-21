@@ -216,7 +216,7 @@ if __name__ == '__main__':
         f', auD weight number:{count_ttl_params(auDecoder)}',
         f', total weight number:{count_ttl_params(auTmodel) + count_ttl_params(clsmodel) + count_ttl_params(auDecoder)}')
     loss_fn = CrossEntropyLabelSmooth(num_classes=args.class_num, use_gpu=torch.cuda.is_available(), epsilon=args.smooth)
-    decoder_loss_fn = CosineSimilarityLoss(reduction='mean', dim=2).to(device=args.device)
+    decoder_loss_fn = nn.MSELoss(reduction='mean').to(device=args.device)
     optimizer = build_optimizer(args=args, auT=auTmodel, auC=clsmodel, auD=auDecoder)
 
     if args.model_topology:
@@ -245,7 +245,7 @@ if __name__ == '__main__':
             attens, hidden_attens = auTmodel(features)
             outputs = clsmodel(attens)
             gen_fts = auDecoder(attens, hidden_attens)
-            loss = loss_fn(outputs, labels) + decoder_loss_fn(gen_fts, org_fts)
+            loss = loss_fn(outputs, labels) + 2.0 * decoder_loss_fn(gen_fts, org_fts)
             loss.backward()
             optimizer.step()
 
