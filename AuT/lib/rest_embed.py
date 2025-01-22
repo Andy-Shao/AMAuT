@@ -14,10 +14,10 @@ class Embedding(nn.Module):
         self.patch_embedding = nn.Conv1d(in_channels=width*8, out_channels=embed_size, kernel_size=1, stride=1, padding=0)
 
     def forward(self, x:torch.Tensor) -> tuple[torch.Tensor, list[torch.Tensor]]:
+        x = self.drop_out(x)
         x, hidden_attens = self.restnet(x)
         x = self.patch_embedding(x)
         x = x.transpose(2, 1)
-        x = self.drop_out(x)
 
         return x, hidden_attens
     
