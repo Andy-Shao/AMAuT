@@ -13,24 +13,24 @@ import torch.nn as nn
 import torch.optim as optim
 
 from lib.toolkit import print_argparse, store_model_structure_to_txt, relative_path, count_ttl_params
-from lib.wavUtils import pad_trunc, Components, AmplitudeToDB, DoNothing, time_shift, MelSpectrogramPadding
+from lib.wavUtils import pad_trunc, Components, AmplitudeToDB, time_shift, MelSpectrogramPadding
 from lib.scDataset import SpeechCommandsDataset
 from AuT.lib.model import AudioTransform, AudioClassifier, cal_model_tag, AudioDecoder
-from AuT.lib.loss import CrossEntropyLabelSmooth, CosineSimilarityLoss
-from AuT.lib.dataset import AudioTokenTransformer, FrequenceTokenTransformer
+from AuT.lib.loss import CrossEntropyLabelSmooth
+from AuT.lib.dataset import FrequenceTokenTransformer
 
 def print_weight_num(auT:AudioTransform, auC:AudioClassifier, auD:AudioDecoder, args:argparse.Namespace) -> None:
     if includeAutoencoder(args):
         print(
-            f'auT weight number:{count_ttl_params(auTmodel)}',
-            f', auC weight number:{count_ttl_params(clsmodel)}',
-            f', auD weight number:{count_ttl_params(auDecoder)}',
-            f', total weight number:{count_ttl_params(auTmodel) + count_ttl_params(clsmodel) + count_ttl_params(auDecoder)}')
+            f'auT weight number:{count_ttl_params(auT)}',
+            f', auC weight number:{count_ttl_params(auC)}',
+            f', auD weight number:{count_ttl_params(auD)}',
+            f', total weight number:{count_ttl_params(auT) + count_ttl_params(auC) + count_ttl_params(auD)}')
     else:
         print(
-            f'auT weight number:{count_ttl_params(auTmodel)}',
-            f', auC weight number:{count_ttl_params(clsmodel)}',
-            f', total weight number:{count_ttl_params(auTmodel) + count_ttl_params(clsmodel)}')
+            f'auT weight number:{count_ttl_params(auT)}',
+            f', auC weight number:{count_ttl_params(auC)}',
+            f', total weight number:{count_ttl_params(auT) + count_ttl_params(auC)}')
 
 def includeAutoencoder(args:argparse.Namespace) -> bool:
     return args.embed_mode == 'CTA'
@@ -257,7 +257,7 @@ if __name__ == '__main__':
         ttl_train_loss = 0.
         auTmodel.train()
         clsmodel.train()
-        auDecoder.train()
+        if includeAutoencoder(args): auDecoder.train()
         for features, labels in tqdm(train_loader):
             features, labels = features.to(args.device), labels.to(args.device)
             org_fts = torch.clone(features).detach().to(args.device)

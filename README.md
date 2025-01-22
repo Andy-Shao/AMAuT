@@ -18,9 +18,6 @@ conda install tqdm==4.66.4 -y
 conda install jupyter -y
 conda install matplotlib==3.8.4 -y 
 pip install wandb==0.17.1
-
-## Potential
-conda install conda-forge::transformers==4.46.3
 ```
 Analysis environment
 ```shell
