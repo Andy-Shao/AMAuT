@@ -4,12 +4,11 @@ import torch
 import torch.nn as nn
 from ml_collections import  ConfigDict
 
-from .embedding import Embedding
 from .rest_embed import Embedding as RestEmbedding
 
-def cal_model_tag(dataset_tag:str, embed_mode:str) -> str:
+def cal_model_tag(dataset_tag:str, pre_tag:str) -> str:
     assert dataset_tag in ['speech-commands', 'speech-commands-random', 'speech-commands-numbers'], 'No support'
-    model_tag = embed_mode
+    model_tag = pre_tag
     if dataset_tag == 'speech-commands':
         model_tag += '-SC'
     else: 
@@ -35,8 +34,6 @@ class AudioClassifier(nn.Module):
         extend_size = config.classifier['extend_size']
         convergent_size = config.classifier['convergent_size']
         self.avgpool = nn.AdaptiveAvgPool1d(output_size=1)
-        # extend_size = int(embed_size // 2)
-        # convergent_size = int(embed_size // 4)
 
         self.fc1 = nn.Linear(in_features=embed_size, out_features=extend_size, bias=True)
         # self.bn1 = nn.BatchNorm1d(num_features=extend_size, affine=True, eps=1e-6)
@@ -63,18 +60,10 @@ class AudioTransform(nn.Module):
     def __init__(self, config:ConfigDict) -> None:
         super(AudioTransform, self).__init__()
         embed_size = config.embedding['embed_size']
-        embed_mode = config.embedding['mode']
-        if embed_mode == 'linear':
-            self.embedding = Embedding(
-                token_len=config.embedding['in_token_len'],
-                embed_size=embed_size, marsked_rate=config.embedding['marsked_rate']
-            )
-        elif embed_mode == 'restnet':
-            self.embedding = RestEmbedding(
-                num_channels=config.embedding['channel_num'], embed_size=embed_size,
-                marsked_rate=config.embedding['marsked_rate']
-            )
-        else: raise Exception('No support')
+        self.embedding = RestEmbedding(
+            num_channels=config.embedding['channel_num'], embed_size=embed_size,
+            marsked_rate=config.embedding['marsked_rate']
+        )
         self.tf_norm = nn.LayerNorm(embed_size, eps=1e-6)
         self.layers = nn.ModuleList([AttentionBlock(config) for _ in range(config.transform['layer_num'])])
 

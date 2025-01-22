@@ -19,6 +19,31 @@ from AuT.lib.model import AudioTransform, AudioClassifier, cal_model_tag, AudioD
 from AuT.lib.loss import CrossEntropyLabelSmooth, CosineSimilarityLoss
 from AuT.lib.dataset import AudioTokenTransformer, FrequenceTokenTransformer
 
+def print_weight_num(auT:AudioTransform, auC:AudioClassifier, auD:AudioDecoder, args:argparse.Namespace) -> None:
+    if includeAutoencoder(args):
+        print(
+            f'auT weight number:{count_ttl_params(auTmodel)}',
+            f', auC weight number:{count_ttl_params(clsmodel)}',
+            f', auD weight number:{count_ttl_params(auDecoder)}',
+            f', total weight number:{count_ttl_params(auTmodel) + count_ttl_params(clsmodel) + count_ttl_params(auDecoder)}')
+    else:
+        print(
+            f'auT weight number:{count_ttl_params(auTmodel)}',
+            f', auC weight number:{count_ttl_params(clsmodel)}',
+            f', total weight number:{count_ttl_params(auTmodel) + count_ttl_params(clsmodel)}')
+
+def includeAutoencoder(args:argparse.Namespace) -> bool:
+    return args.embed_mode == 'CTA'
+
+def time_masking(features:torch.Tensor, cfgs:list[dict]) -> torch.Tensor:
+    import torchaudio.functional as F
+    ret = features
+    for cfg in cfgs:
+        ret = F.mask_along_axis_iid(
+            specgrams=ret, mask_param=cfg['mask_param'], mask_value=.0, axis=2, p=cfg['p']
+        )
+    return ret
+
 def store_model_structure_by_tb(tModel: nn.Module, cModel:nn.Module, input_tensor:torch.Tensor, log_dir:str) -> None:
     from torch.utils.tensorboard.writer import SummaryWriter
     import shutil
@@ -55,8 +80,9 @@ def build_optimizer(args: argparse.Namespace, auT:nn.Module, auC:nn.Module, auD:
         param_group += [{'params':v, 'lr':learning_rate}]
     for k, v in auC.named_parameters():
         param_group += [{'params':v, 'lr':learning_rate}]
-    for k, v in auD.named_parameters():
-        param_group += [{'params':v, 'lr':learning_rate}]
+    if includeAutoencoder(args):
+        for k, v in auD.named_parameters():
+            param_group += [{'params':v, 'lr':learning_rate}]
     optimizer = optim.SGD(params=param_group)
     optimizer = op_copy(optimizer)
     return optimizer
@@ -86,23 +112,21 @@ def build_model(args:argparse.Namespace) -> tuple[AudioTransform, AudioClassifie
 
     config = ConfigDict()
     config.embedding = ConfigDict()
-    if args.embed_mode == 'linear':
-        config.embedding.in_token_len = 104
-        config.embedding.in_token_num = args.n_mels
-        config.embedding.channel_num = 1
-    elif args.embed_mode == 'restnet':
-        config.embedding.channel_num = args.n_mels
+    config.embedding.channel_num = args.n_mels
     config.embedding.marsked_rate = .15
     config.embedding.embed_size = args.embed_size
     config.embedding.mode = args.embed_mode # restnet or linear
 
     transformer_cfg(args, config)
     classifier_cfg(args, config)
-    decoder_cfg(args, config)
-
     auTmodel = AudioTransform(config=config).to(device=args.device)
     clsmodel = AudioClassifier(config=config).to(device=args.device)
-    auDecoder = AudioDecoder(config=config).to(device=args.device)
+
+    if includeAutoencoder(args):
+        decoder_cfg(args, config)
+        auDecoder = AudioDecoder(config=config).to(device=args.device)
+    else:
+        auDecoder = None
 
     return auTmodel, clsmodel, auDecoder
 
@@ -135,7 +159,7 @@ if __name__ == '__main__':
     ap.add_argument('--lr', type=float, default=1e-2, help='learning rate')
     ap.add_argument('--smooth', type=float, default=.1)
     ap.add_argument('--early_stop', type=int, default=-1)
-    ap.add_argument('--embed_mode', type=str, default='linear', choices=['restnet', 'linear'])
+    ap.add_argument('--embed_mode', type=str, default='CT', choices=['CT', 'CTA'])
     ap.add_argument('--embed_size', type=int, default=768, choices=[768, 1024])
 
     args = ap.parse_args()
@@ -161,7 +185,7 @@ if __name__ == '__main__':
     ##########################################
 
     wandb_run = wandb.init(
-        project='AC-PT (AuT)', name=cal_model_tag(dataset_tag=args.dataset, embed_mode='RT' if args.embed_mode == 'restnet' else 'L'), 
+        project='AC-PT (AuT)', name=cal_model_tag(dataset_tag=args.dataset, pre_tag=args.embed_mode), 
         mode='online' if args.wandb else 'disabled', config=args, tags=['Audio Classification', args.dataset, 'AuT'])
     
     max_ms=1000
@@ -181,7 +205,7 @@ if __name__ == '__main__':
         ), # 80 x 104
         AmplitudeToDB(top_db=80., max_out=2.),
         MelSpectrogramPadding(target_length=target_length),
-        AudioTokenTransformer() if args.embed_mode == 'linear' else FrequenceTokenTransformer()
+        FrequenceTokenTransformer()
     ])
 
     train_dataset = build_dataest(args=args, tsf=tf_array, mode='train')
@@ -197,7 +221,7 @@ if __name__ == '__main__':
         ),
         AmplitudeToDB(top_db=80., max_out=2.),
         MelSpectrogramPadding(target_length=target_length),
-        AudioTokenTransformer() if args.embed_mode == 'linear' else FrequenceTokenTransformer()
+        FrequenceTokenTransformer()
     ])
     val_dataset = build_dataest(args=args, tsf=tf_array, mode='test')
     val_loader = DataLoader(
@@ -209,12 +233,9 @@ if __name__ == '__main__':
     auTmodel, clsmodel, auDecoder = build_model(args=args)
     store_model_structure_to_txt(model=auTmodel, output_path=relative_path(args, 'auTmodel.txt'))
     store_model_structure_to_txt(model=clsmodel, output_path=relative_path(args, 'clsmodel.txt'))
-    store_model_structure_to_txt(model=auDecoder, output_path=relative_path(args, 'auDecoder.txt'))
-    print(
-        f'auT weight number:{count_ttl_params(auTmodel)}',
-        f', auC weight number:{count_ttl_params(clsmodel)}',
-        f', auD weight number:{count_ttl_params(auDecoder)}',
-        f', total weight number:{count_ttl_params(auTmodel) + count_ttl_params(clsmodel) + count_ttl_params(auDecoder)}')
+    if includeAutoencoder(args):
+        store_model_structure_to_txt(model=auDecoder, output_path=relative_path(args, 'auDecoder.txt'))
+    print_weight_num(auT=auTmodel, auC=clsmodel, auD=auDecoder, args=args)
     loss_fn = CrossEntropyLabelSmooth(num_classes=args.class_num, use_gpu=torch.cuda.is_available(), epsilon=args.smooth)
     decoder_loss_fn = nn.MSELoss(reduction='mean').to(device=args.device)
     optimizer = build_optimizer(args=args, auT=auTmodel, auC=clsmodel, auD=auDecoder)
@@ -244,8 +265,11 @@ if __name__ == '__main__':
             optimizer.zero_grad()
             attens, hidden_attens = auTmodel(features)
             outputs = clsmodel(attens)
-            gen_fts = auDecoder(attens, hidden_attens)
-            loss = loss_fn(outputs, labels) + 2.0 * decoder_loss_fn(gen_fts, org_fts)
+            if includeAutoencoder(args):
+                gen_fts = auDecoder(attens, hidden_attens)
+                loss = loss_fn(outputs, labels) + 2.0 * decoder_loss_fn(gen_fts, org_fts)
+            else:
+                loss = loss_fn(outputs, labels)
             loss.backward()
             optimizer.step()
 
