@@ -14,13 +14,10 @@ class Embedding(nn.Module):
         self.patch_embedding = nn.Conv1d(in_channels=width*8, out_channels=embed_size, kernel_size=1, stride=1, padding=0)
 
     def forward(self, x:torch.Tensor) -> tuple[torch.Tensor, list[torch.Tensor]]:
-        # batch_size, channel_num, token_num, token_len = x.size()
-        x = self.drop_out(x)
-        # x = x.reshape(batch_size, -1, token_len)
         x, hidden_attens = self.restnet(x)
         x = self.patch_embedding(x)
         x = x.transpose(2, 1)
-        # x = self.drop_out(x)
+        x = self.drop_out(x)
 
         return x, hidden_attens
     
@@ -137,29 +134,3 @@ class StdConv1d(nn.Conv1d):
             input=x, weight=w, bias=self.bias, stride=self.stride, padding=self.padding, 
             dilation=self.dilation, groups=self.groups
         )
-    
-class RandomMask(nn.Module):
-    def __init__(self, w=(16, 16), p=.0, inplace=False):
-        super(RandomMask, self).__init__()
-        self.w = w
-        self.p = p
-        self.inplace = inplace
-
-    def forward(self, x:torch.Tensor) -> torch.Tensor:
-        if self.inplace: ret = x
-        else: ret = torch.clone(x)
-
-        if self.p == .0:
-            return ret
-        
-        batch_size, channels, width, height = x.size()
-        max_width = width / self.w[0]
-        max_height = height / self.w[1]
-        win_num = (width * height) // (self.w[0] * self.w[1])
-        mask_num = (width * height * self.p) // (self.w[0] * self.w[1])
-        mask_index = random.sample(range(0, win_num), k=mask_num)
-        for i in mask_index:
-            h = i % max_width
-            w = i // h
-            ret[:, :, w*self.w[0]:(w+1)*self.w[0], h*self.w[1]:(h+1)*self.w[1]] = 0
-        return ret
