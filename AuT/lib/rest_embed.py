@@ -12,8 +12,11 @@ class Embedding(nn.Module):
         self.restnet = RestNet(cin=num_channels, embed_size=embed_size, width=width, ng=ng, num_layers=num_layers)
         self.drop_out = nn.Dropout(p=marsked_rate)
         self.patch_embedding = nn.Conv1d(in_channels=width*8, out_channels=embed_size, kernel_size=1, stride=1, padding=0)
+        self.pos_embed = nn.Parameter(torch.zeros(1, 80, 104))
+        torch.nn.init.trunc_normal_(self.pos_embed, std=.02)
 
     def forward(self, x:torch.Tensor) -> tuple[torch.Tensor, list[torch.Tensor]]:
+        x = x + self.pos_embed
         x = self.drop_out(x)
         x, hidden_attens = self.restnet(x)
         x = self.patch_embedding(x)
