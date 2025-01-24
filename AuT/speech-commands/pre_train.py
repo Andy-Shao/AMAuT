@@ -17,6 +17,7 @@ from lib.wavUtils import pad_trunc, Components, AmplitudeToDB, time_shift, MelSp
 from lib.scDataset import SpeechCommandsDataset
 from AuT.lib.model import AudioTransform, AudioClassifier, cal_model_tag, AudioDecoder
 from AuT.lib.loss import CrossEntropyLabelSmooth, CosineSimilarityLoss
+from AuT.lib.config import transformer_cfg, classifier_cfg, decoder_cfg
 
 def print_weight_num(auT:AudioTransform, auC:AudioClassifier, auD:AudioDecoder, args:argparse.Namespace) -> None:
     if includeAutoencoder(args):
@@ -87,28 +88,6 @@ def build_optimizer(args: argparse.Namespace, auT:nn.Module, auC:nn.Module, auD:
     return optimizer
 
 def build_model(args:argparse.Namespace) -> tuple[AudioTransform, AudioClassifier, AudioDecoder]:
-    def transformer_cfg(args:argparse.Namespace, cfg:ConfigDict) -> None:
-        cfg.transform = ConfigDict()
-        cfg.transform.layer_num = 12 if args.embed_size == 768 else 24
-        cfg.transform.head_num = 12 if args.embed_size == 768 else 16
-        cfg.transform.atten_drop_rate = .0
-        cfg.transform.mlp_mid = 3072 if args.embed_size == 768 else 4096
-        cfg.transform.mlp_dp_rt = .0
-    
-    def classifier_cfg(args:argparse.Namespace, cfg:ConfigDict) -> None:
-        cfg.classifier = ConfigDict()
-        cfg.classifier.class_num = args.class_num
-        cfg.classifier.extend_size = 2048
-        cfg.classifier.convergent_size = 256
-
-    def decoder_cfg(args:argparse.Namespace, cfg:ConfigDict) -> None:
-        decoder = ConfigDict()
-        decoder.in_channels = [512, 128, 128]
-        decoder.out_channels = [128, 128, args.n_mels]
-        decoder.skip_channels = [512, 128, 0]
-        decoder.hidden_size = args.embed_size
-        cfg.decoder = decoder
-
     config = ConfigDict()
     config.embedding = ConfigDict()
     config.embedding.channel_num = args.n_mels
@@ -116,13 +95,13 @@ def build_model(args:argparse.Namespace) -> tuple[AudioTransform, AudioClassifie
     config.embedding.embed_size = args.embed_size
     config.embedding.in_shape = [args.n_mels, 104]
 
-    transformer_cfg(args, config)
-    classifier_cfg(args, config)
+    transformer_cfg(cfg=config, embed_size=args.embed_size)
+    classifier_cfg(cfg=config, class_num=args.class_num)
     auTmodel = AudioTransform(config=config).to(device=args.device)
     clsmodel = AudioClassifier(config=config).to(device=args.device)
 
     if includeAutoencoder(args):
-        decoder_cfg(args, config)
+        decoder_cfg(cfg=config, embed_size=args.embed_size, n_mels=args.n_mels)
         auDecoder = AudioDecoder(config=config).to(device=args.device)
     else:
         auDecoder = None
