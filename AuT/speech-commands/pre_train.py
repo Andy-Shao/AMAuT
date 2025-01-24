@@ -33,7 +33,7 @@ def print_weight_num(auT:AudioTransform, auC:AudioClassifier, auD:AudioDecoder, 
             f', total weight number:{count_ttl_params(auT) + count_ttl_params(auC)}')
 
 def includeAutoencoder(args:argparse.Namespace) -> bool:
-    return args.embed_mode == 'CTA'
+    return args.arch == 'CTA'
 
 def time_masking(features:torch.Tensor, cfgs:list[dict]) -> torch.Tensor:
     import torchaudio.functional as F
@@ -115,7 +115,6 @@ def build_model(args:argparse.Namespace) -> tuple[AudioTransform, AudioClassifie
     config.embedding.channel_num = args.n_mels
     config.embedding.marsked_rate = .15
     config.embedding.embed_size = args.embed_size
-    config.embedding.mode = args.embed_mode
     config.embedding.in_shape = [args.n_mels, 104]
 
     transformer_cfg(args, config)
@@ -161,7 +160,7 @@ if __name__ == '__main__':
     ap.add_argument('--lr_dec', type=float, default=1.25)
     ap.add_argument('--smooth', type=float, default=.1)
     ap.add_argument('--early_stop', type=int, default=-1)
-    ap.add_argument('--embed_mode', type=str, default='CT', choices=['CT', 'CTA'])
+    ap.add_argument('--arch', type=str, default='CT', choices=['CT', 'CTA'])
     ap.add_argument('--embed_size', type=int, default=768, choices=[768, 1024])
 
     args = ap.parse_args()
@@ -187,7 +186,7 @@ if __name__ == '__main__':
     ##########################################
 
     wandb_run = wandb.init(
-        project='AC-PT (AuT)', name=cal_model_tag(dataset_tag=args.dataset, pre_tag=args.embed_mode), 
+        project='AC-PT (AuT)', name=cal_model_tag(dataset_tag=args.dataset, pre_tag=args.arch), 
         mode='online' if args.wandb else 'disabled', config=args, tags=['Audio Classification', args.dataset, 'AuT'])
     
     max_ms=1000
