@@ -157,3 +157,22 @@ class MelSpectrogramPadding(nn.Module):
         elif p < 0:
             x = x[:, :, 0:self.target_length]
         return x
+
+class FrequenceTokenTransformer(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x:torch.Tensor) -> torch.Tensor:
+        c, token_num, token_len = x.size()
+        x = x.reshape(-1, token_len)
+        return x
+    
+class VisionTokenTransformer(nn.Module):
+    def __init__(self, kernel_size=(16, 20), stride=(8, 10)):
+        super(VisionTokenTransformer, self).__init__()
+        self.unfold = nn.Unfold(kernel_size=kernel_size, stride=stride)
+
+    def forward(self, x:torch.Tensor) -> torch.Tensor:
+        x = self.unfold(x)
+        x = x.transpose(1, 0)
+        return x

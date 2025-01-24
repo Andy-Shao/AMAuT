@@ -13,11 +13,10 @@ import torch.nn as nn
 import torch.optim as optim
 
 from lib.toolkit import print_argparse, store_model_structure_to_txt, relative_path, count_ttl_params
-from lib.wavUtils import pad_trunc, Components, AmplitudeToDB, time_shift, MelSpectrogramPadding
+from lib.wavUtils import pad_trunc, Components, AmplitudeToDB, time_shift, MelSpectrogramPadding, FrequenceTokenTransformer
 from lib.scDataset import SpeechCommandsDataset
 from AuT.lib.model import AudioTransform, AudioClassifier, cal_model_tag, AudioDecoder
 from AuT.lib.loss import CrossEntropyLabelSmooth, CosineSimilarityLoss
-from AuT.lib.dataset import FrequenceTokenTransformer
 
 def print_weight_num(auT:AudioTransform, auC:AudioClassifier, auD:AudioDecoder, args:argparse.Namespace) -> None:
     if includeAutoencoder(args):
