@@ -115,7 +115,8 @@ def build_model(args:argparse.Namespace) -> tuple[AudioTransform, AudioClassifie
     config.embedding.channel_num = args.n_mels
     config.embedding.marsked_rate = .15
     config.embedding.embed_size = args.embed_size
-    config.embedding.mode = args.embed_mode # restnet or linear
+    config.embedding.mode = args.embed_mode
+    config.embedding.in_shape = [args.n_mels, 104]
 
     transformer_cfg(args, config)
     classifier_cfg(args, config)

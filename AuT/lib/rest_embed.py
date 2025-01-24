@@ -5,14 +5,14 @@ import torch
 import torch.nn as nn
 
 class Embedding(nn.Module):
-    def __init__(self, num_channels:int, embed_size:int, marsked_rate:float, width=128, num_layers=[6,8]) -> None:
+    def __init__(self, num_channels:int, embed_size:int, marsked_rate:float, width=128, num_layers=[6,8], in_shape=[80,104]) -> None:
         super(Embedding, self).__init__()
         ng = 32
         assert width % ng == 0, 'width must be dividable by the num_groups in GroupNorm.'
         self.restnet = RestNet(cin=num_channels, embed_size=embed_size, width=width, ng=ng, num_layers=num_layers)
         self.drop_out = nn.Dropout(p=marsked_rate)
         self.patch_embedding = nn.Conv1d(in_channels=width*8, out_channels=embed_size, kernel_size=1, stride=1, padding=0)
-        self.pos_embed = nn.Parameter(torch.zeros(1, 80, 104))
+        self.pos_embed = nn.Parameter(torch.zeros(1, in_shape[0], in_shape[1]))
         torch.nn.init.trunc_normal_(self.pos_embed, std=.02)
 
     def forward(self, x:torch.Tensor) -> tuple[torch.Tensor, list[torch.Tensor]]:
