@@ -16,7 +16,7 @@ from lib.toolkit import print_argparse, store_model_structure_to_txt, relative_p
 from lib.wavUtils import pad_trunc, Components, AmplitudeToDB, time_shift, MelSpectrogramPadding
 from lib.scDataset import SpeechCommandsDataset
 from AuT.lib.model import AudioTransform, AudioClassifier, cal_model_tag, AudioDecoder
-from AuT.lib.loss import CrossEntropyLabelSmooth
+from AuT.lib.loss import CrossEntropyLabelSmooth, CosineSimilarityLoss
 from AuT.lib.dataset import FrequenceTokenTransformer
 
 def print_weight_num(auT:AudioTransform, auC:AudioClassifier, auD:AudioDecoder, args:argparse.Namespace) -> None:
@@ -158,6 +158,7 @@ if __name__ == '__main__':
     ap.add_argument('--interval_num', type=int, default=50, help='interval number')
     ap.add_argument('--batch_size', type=int, default=64, help='batch size')
     ap.add_argument('--lr', type=float, default=1e-2, help='learning rate')
+    ap.add_argument('--lr_dec', type=float, default=1.25)
     ap.add_argument('--smooth', type=float, default=.1)
     ap.add_argument('--early_stop', type=int, default=-1)
     ap.add_argument('--embed_mode', type=str, default='CT', choices=['CT', 'CTA'])
@@ -238,7 +239,7 @@ if __name__ == '__main__':
         store_model_structure_to_txt(model=auDecoder, output_path=relative_path(args, 'auDecoder.txt'))
     print_weight_num(auT=auTmodel, auC=clsmodel, auD=auDecoder, args=args)
     loss_fn = CrossEntropyLabelSmooth(num_classes=args.class_num, use_gpu=torch.cuda.is_available(), epsilon=args.smooth)
-    decoder_loss_fn = nn.MSELoss(reduction='mean').to(device=args.device)
+    decoder_loss_fn = CosineSimilarityLoss(reduction='mean', dim=2).to(args.device)
     optimizer = build_optimizer(args=args, auT=auTmodel, auC=clsmodel, auD=auDecoder)
 
     if args.model_topology:
@@ -268,7 +269,7 @@ if __name__ == '__main__':
             outputs = clsmodel(attens)
             if includeAutoencoder(args):
                 gen_fts = auDecoder(attens, hidden_attens)
-                loss = loss_fn(outputs, labels) + 2.0 * decoder_loss_fn(gen_fts, org_fts)
+                loss = loss_fn(outputs, labels) + args.lr_dec * decoder_loss_fn(gen_fts, org_fts)
             else:
                 loss = loss_fn(outputs, labels)
             loss.backward()
