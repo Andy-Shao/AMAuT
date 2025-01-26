@@ -150,10 +150,12 @@ class MelSpectrogramPadding(nn.Module):
         self.target_length = target_length
 
     def forward(self, x:torch.Tensor) -> torch.Tensor:
+        from torch.nn.functional import pad
         p = self.target_length - x.shape[2]
         if p > 0:
-            padding = nn.ZeroPad1d((0, p, 0, 0))
-            x = padding(x)
+            # padding = nn.ZeroPad1d((0, p, 0, 0))
+            # x = padding(x)
+            x = pad(x, (0, p, 0, 0), mode='constant', value=0.)
         elif p < 0:
             x = x[:, :, 0:self.target_length]
         return x
@@ -175,4 +177,60 @@ class VisionTokenTransformer(nn.Module):
     def forward(self, x:torch.Tensor) -> torch.Tensor:
         x = self.unfold(x)
         x = x.transpose(1, 0)
+        return x
+    
+class AudioPadding(nn.Module):
+    def __init__(self, max_ms:int, sample_rate:int):
+        super(AudioPadding, self).__init__()
+        self.length = sample_rate // 1000 * max_ms
+
+    def forward(self, x:torch.Tensor) -> torch.Tensor:
+        from torch.nn.functional import pad
+        l = self.length - x.shape[1]
+        if l > 0:
+            head = l // 2
+            tail = l - head
+            x = pad(x, (head, tail), mode='constant', value=0.)
+        return x
+
+class RandomPitchShift(nn.Module):
+    def __init__(
+            self, step_rang:list[int], sample_rate:int, bins_per_octave:int=12, n_fft:int=512, win_length:int=None,
+            hop_length:int=None
+        ):
+        from torchaudio.transforms import PitchShift
+        super(RandomPitchShift, self).__init__()
+        self.shifts = nn.ModuleList([
+            PitchShift(
+                sample_rate=sample_rate, n_steps=item, bins_per_octave=bins_per_octave, n_fft=n_fft, 
+                win_length=win_length, hop_length=hop_length
+            ) for item in step_rang
+        ])
+
+    def forward(self, x:torch.Tensor) -> torch.Tensor:
+        shift = self.shifts[random.randint(0, len(self.shifts)-1)]
+        x = shift(x)
+        return x
+    
+class RandomVol(nn.Module):
+    def __init__(self, gains:list[float], gain_type:str='amplitude'):
+        from torchaudio.transforms import Vol
+        super(RandomVol, self).__init__()
+        self.vols = nn.ModuleList([Vol(gain=i, gain_type=gain_type) for i in gains])
+
+    def forward(self, x:torch.Tensor) -> torch.Tensor:
+        vol = self.vols[random.randint(0, len(self.vols)-1)]
+        x = vol(x)
+        return x
+    
+class RandomTimeMask(nn.Module):
+    def __init__(self, cfgs:list[dict]):
+        super(RandomTimeMask, self).__init__()
+        self.cfgs = cfgs
+    
+    def forward(self, x:torch.Tensor) -> torch.Tensor:
+        from torchaudio.functional import mask_along_axis
+        
+        for cfg in self.cfgs:
+            x = mask_along_axis(specgram=x, mask_param=cfg['mask_param'], mask_value=0., axis=2, p=cfg['p'])
         return x

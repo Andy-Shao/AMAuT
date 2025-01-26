@@ -13,7 +13,7 @@ import torch.nn as nn
 import torch.optim as optim
 
 from lib.toolkit import print_argparse, store_model_structure_to_txt, relative_path, count_ttl_params
-from lib.wavUtils import pad_trunc, Components, AmplitudeToDB, time_shift, MelSpectrogramPadding, FrequenceTokenTransformer
+from lib.wavUtils import AudioPadding, Components, AmplitudeToDB, time_shift, MelSpectrogramPadding, FrequenceTokenTransformer
 from lib.scDataset import SpeechCommandsDataset
 from AuT.lib.model import AudioTransform, AudioClassifier, cal_model_tag, AudioDecoder
 from AuT.lib.loss import CrossEntropyLabelSmooth, CosineSimilarityLoss
@@ -176,7 +176,7 @@ if __name__ == '__main__':
     mel_scale='slaney'
     target_length=104
     tf_array = Components(transforms=[
-        pad_trunc(max_ms=max_ms, sample_rate=sample_rate),
+        AudioPadding(max_ms=max_ms, sample_rate=sample_rate),
         time_shift(shift_limit=.17, is_random=True, is_bidirection=True),
         a_transforms.MelSpectrogram(
             sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
@@ -193,7 +193,7 @@ if __name__ == '__main__':
     )
 
     tf_array = Components(transforms=[
-        pad_trunc(max_ms=max_ms, sample_rate=sample_rate),
+        AudioPadding(max_ms=max_ms, sample_rate=sample_rate),
         a_transforms.MelSpectrogram(
             sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
             mel_scale=mel_scale
