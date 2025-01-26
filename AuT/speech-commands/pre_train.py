@@ -59,8 +59,10 @@ def store_model_structure_by_tb(tModel: nn.Module, cModel:nn.Module, input_tenso
     writer.add_graph(model=cModel, input_to_model=tmp)
     writer.close()
 
-def lr_scheduler(optimizer: torch.optim.Optimizer, epoch:int, max_epoch:int, gamma=10, power=0.75) -> optim.Optimizer:
-    decay = (1 + gamma * epoch / max_epoch) ** (-power)
+def lr_scheduler(optimizer: torch.optim.Optimizer, epoch:int, lr_cardinality:int, gamma=10, power=0.75) -> optim.Optimizer:
+    if epoch >= lr_cardinality-1:
+        return optimizer
+    decay = (1 + gamma * epoch / lr_cardinality) ** (-power)
     for param_group in optimizer.param_groups:
         param_group['lr'] = param_group['lr0'] * decay
         param_group['weight_decay'] = 1e-3
@@ -132,9 +134,10 @@ if __name__ == '__main__':
     ap.add_argument('--model_topology', action='store_true')
 
     ap.add_argument('--max_epoch', type=int, default=200, help='max epoch')
-    ap.add_argument('--interval_num', type=int, default=50, help='interval number')
+    ap.add_argument('--interval', type=int, default=1, help='interval number')
     ap.add_argument('--batch_size', type=int, default=64, help='batch size')
     ap.add_argument('--lr', type=float, default=1e-2, help='learning rate')
+    ap.add_argument('--lr_cardinality', type=int, default=40)
     ap.add_argument('--lr_dec', type=float, default=1.25)
     ap.add_argument('--smooth', type=float, default=.1)
     ap.add_argument('--early_stop', type=int, default=-1)
@@ -207,8 +210,6 @@ if __name__ == '__main__':
         dataset=val_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=args.num_workers
     )
 
-    interval = args.max_epoch // args.interval_num
-
     auTmodel, clsmodel, auDecoder = build_model(args=args)
     store_model_structure_to_txt(model=auTmodel, output_path=relative_path(args, 'auTmodel.txt'))
     store_model_structure_to_txt(model=clsmodel, output_path=relative_path(args, 'clsmodel.txt'))
@@ -216,7 +217,7 @@ if __name__ == '__main__':
         store_model_structure_to_txt(model=auDecoder, output_path=relative_path(args, 'auDecoder.txt'))
     print_weight_num(auT=auTmodel, auC=clsmodel, auD=auDecoder, args=args)
     loss_fn = CrossEntropyLabelSmooth(num_classes=args.class_num, use_gpu=torch.cuda.is_available(), epsilon=args.smooth)
-    decoder_loss_fn = CosineSimilarityLoss(reduction='mean', dim=2).to(args.device)
+    decoder_loss_fn = nn.MSELoss(reduction='mean').to(device=args.device)
     optimizer = build_optimizer(args=args, auT=auTmodel, auC=clsmodel, auD=auDecoder)
 
     if args.model_topology:
@@ -259,8 +260,8 @@ if __name__ == '__main__':
         print(f'Training size:{ttl_train_size:.0f}, accuracy:{ttl_train_corr/ttl_train_size * 100.:.2f}%') 
 
         learning_rate = optimizer.param_groups[0]['lr']
-        if epoch % interval == 0 or epoch == args.max_epoch - 1:
-            lr_scheduler(optimizer=optimizer, epoch=epoch, max_epoch=args.max_epoch)
+        if epoch % args.interval == 0:
+            lr_scheduler(optimizer=optimizer, epoch=epoch, lr_cardinality=args.lr_cardinality)
         
         print("Validation...")
         ttl_val_size = 0.
