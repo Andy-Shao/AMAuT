@@ -179,7 +179,7 @@ if __name__ == '__main__':
     mel_scale='slaney'
     target_length=104
     tf_array = Components(transforms=[
-        AudioPadding(max_ms=max_ms, sample_rate=sample_rate),
+        AudioPadding(max_ms=max_ms, sample_rate=sample_rate, random_shift=True),
         time_shift(shift_limit=.17, is_random=True, is_bidirection=True),
         a_transforms.MelSpectrogram(
             sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
@@ -196,7 +196,7 @@ if __name__ == '__main__':
     )
 
     tf_array = Components(transforms=[
-        AudioPadding(max_ms=max_ms, sample_rate=sample_rate),
+        AudioPadding(max_ms=max_ms, sample_rate=sample_rate, random_shift=False),
         a_transforms.MelSpectrogram(
             sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
             mel_scale=mel_scale
