@@ -5,24 +5,6 @@ from torch.utils.data import Dataset
 
 from lib.toolkit import print_argparse
 
-class TwoTFDataset(Dataset):
-    def __init__(self, dataset:Dataset, tf1:nn.Module=None, tf2:nn.Module=None):
-        super(TwoTFDataset, self).__init__()
-        self.dataset = dataset
-        self.tf1, self.tf2 = tf1, tf2
-
-    def __len__(self):
-        return len(self.dataset)
-    
-    def __getitem__(self, index):
-        item, label = self.dataset[index]
-        x1, x2 = item, item
-        if self.tf1 is not None:
-            x1 = self.tf1(x1)
-        if self.tf2 is not None:
-            x2 = self.tf2(x2)
-        return x1, x2, label
-
 if __name__ == '__main__':
     ap = argparse.ArgumentParser('MeT')
     args = ap.parse_args()

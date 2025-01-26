@@ -3,12 +3,12 @@ from torch import nn
 
 from AuT.lib.rest_embed import RestNetBlock, StdConv1d
 
-class Embedding(nn.Module):
+class FreqEmbedding(nn.Module):
     def __init__(self, num_channels:int, embed_size:int, marsked_rate:float, width=128, num_layers=[6,8], in_shape=[80,104]):
-        super(Embedding, self).__init__()
+        super(FreqEmbedding, self).__init__()
         ng = 32
         assert width % ng == 0, 'width must be dividable by the num_groups in GroupNorm.'
-        self.restnet = RestNet(cin=num_channels, width=width, ng=ng, num_layers=num_layers)
+        self.restnet = RestNet1d(cin=num_channels, width=width, ng=ng, num_layers=num_layers)
         self.drop_out = nn.Dropout(p=marsked_rate)
         self.patch_embedding = nn.Conv1d(in_channels=width*8, out_channels=embed_size, kernel_size=1, stride=1, padding=0)
         self.pos_embed = nn.Parameter(torch.zeros(1, in_shape[0], in_shape[1]))
@@ -22,9 +22,9 @@ class Embedding(nn.Module):
         x = x.transpose(2, 1)
         return x
 
-class RestNet(nn.Module):
+class RestNet1d(nn.Module):
     def __init__(self, cin:int, width:int, ng:int, num_layers:list[int]):
-        super(RestNet, self).__init__()
+        super(RestNet1d, self).__init__()
         self.root = nn.Sequential(
             StdConv1d(in_channels=cin, out_channels=width, kernel_size=7, stride=2, bias=False, padding=3),
             nn.GroupNorm(ng, width, eps=1e-6),
