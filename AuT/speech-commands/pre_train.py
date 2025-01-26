@@ -13,7 +13,7 @@ import torch.nn as nn
 import torch.optim as optim
 
 from lib.toolkit import print_argparse, store_model_structure_to_txt, relative_path, count_ttl_params
-from lib.wavUtils import AudioPadding, Components, AmplitudeToDB, time_shift, MelSpectrogramPadding, FrequenceTokenTransformer
+from lib.wavUtils import AudioPadding, Components, AmplitudeToDB, time_shift, MelSpectrogramPadding, FrequenceTokenTransformer, RandomPitchShift
 from lib.scDataset import SpeechCommandsDataset
 from AuT.lib.model import AudioTransform, AudioClassifier, cal_model_tag, AudioDecoder
 from AuT.lib.loss import CrossEntropyLabelSmooth, CosineSimilarityLoss
