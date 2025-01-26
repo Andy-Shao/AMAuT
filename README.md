@@ -42,7 +42,7 @@ from unrecognized ones.
 + sample rate: 16000
 + sampel data shape: [1, 5945 - 16000]
 
-|backgroud noise type|sample data shape|sample rate|
+|background noise type|sample data shape|sample rate|
 |--|--|--|
 |doing_the_dishes|[1, 1522930]|16000|
 |dude_miaowing|[1, 988891]|16000|
