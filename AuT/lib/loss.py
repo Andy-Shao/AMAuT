@@ -4,24 +4,21 @@ import torch.nn.functional as F
 
 
 class SSIMLoss(nn.Module):
-    def __init__(self, kernel_size=(16, 20), stride=(8, 10), reduction='mean', c1=1e-8, c2=1e-8):
+    def __init__(self, reduction='mean', c1=1e-8, c2=1e-8):
         super(SSIMLoss, self).__init__()
         assert reduction in ['mean', 'sum'], 'reduction value is incorrect'
         self.reduction = reduction
-        self.patch_embed = nn.Unfold(kernel_size=kernel_size, stride=stride)
         self.c1 = c1
         self.c2 = c2
 
     def forward(self, x1: torch.Tensor, x2: torch.Tensor) -> torch.Tensor:
-        x1_patches = self.patch_embed(x1).transpose(2, 1)
-        x2_patches = self.patch_embed(x2).transpose(2, 1)
-        mu1 = torch.mean(x1_patches, dim=2)
-        mu2 = torch.mean(x2_patches, dim=2)
-        var1 = torch.var(x1_patches, dim=2)
-        var2 = torch.var(x2_patches, dim=2)
-        cov = torch.sum((x1_patches - mu1) * (x2_patches - mu2), dim=2)/(x1_patches.shape[2]-1)
+        mu1 = torch.mean(x1, dim=2)
+        mu2 = torch.mean(x2, dim=2)
+        var1 = torch.var(x1, dim=2)
+        var2 = torch.var(x2, dim=2)
+        cov = torch.sum((x1 - mu1.unsqueeze(2)) * (x2 - mu2.unsqueeze(2)), dim=2)/(x1.shape[2]-1)
 
-        loss = (2 * mu1 * mu2 + self.c1)(2 * cov + self.c2)/(mu1**2 + mu2**2 + self.c1)(var1 + var2 + self.c2)
+        loss = (2 * mu1 * mu2 + self.c1) * (2 * cov + self.c2) / (torch.pow(mu1, exponent=2) + torch.pow(mu2, exponent=2) + self.c1) * (var1 + var2 + self.c2)
         if self.reduction == 'mean':
             return loss.mean()
         else:
