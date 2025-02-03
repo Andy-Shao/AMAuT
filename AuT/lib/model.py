@@ -60,19 +60,28 @@ class AudioTransform(nn.Module):
     def __init__(self, config:ConfigDict) -> None:
         super(AudioTransform, self).__init__()
         embed_size = config.embedding['embed_size']
+        self.arch = config.embedding['arch']
         self.embedding = RestEmbedding(
             num_channels=config.embedding['channel_num'], embed_size=embed_size,
-            marsked_rate=config.embedding['marsked_rate'], in_shape=config.embedding['in_shape']
+            marsked_rate=config.embedding['marsked_rate'], in_shape=config.embedding['in_shape'],
+            arch=self.arch
         )
         self.tf_norm = nn.LayerNorm(embed_size, eps=1e-6)
         self.layers = nn.ModuleList([AttentionBlock(config) for _ in range(config.transform['layer_num'])])
 
-    def forward(self, x:torch.Tensor) -> tuple[torch.Tensor, list[torch.Tensor]]:
-        x, features = self.embedding(x)
+    def forward(self, x:torch.Tensor):
+        if self.arch == 'CTA':
+            x, features = self.embedding(x)
+        else:
+            x = self.embedding(x)
         for layer in self.layers:
             x = layer(x)
         x = self.tf_norm(x)
-        return x, features
+
+        if self.arch == 'CTA':
+            return x, features
+        else:
+            return x
 
 class AttentionBlock(nn.Module):
     def __init__(self, config:ConfigDict) -> None:

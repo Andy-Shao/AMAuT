@@ -96,6 +96,7 @@ def build_model(args:argparse.Namespace) -> tuple[AudioTransform, AudioClassifie
     config.embedding.marsked_rate = .15
     config.embedding.embed_size = args.embed_size
     config.embedding.in_shape = [args.n_mels, 104]
+    config.embedding.arch = args.arch
 
     transformer_cfg(cfg=config, embed_size=args.embed_size)
     classifier_cfg(cfg=config, class_num=args.class_num)
@@ -243,12 +244,13 @@ if __name__ == '__main__':
             org_fts = torch.clone(features).detach().to(args.device)
 
             optimizer.zero_grad()
-            attens, hidden_attens = auTmodel(features)
-            outputs = clsmodel(attens)
             if includeAutoencoder(args):
+                attens, hidden_attens = auTmodel(features)
+                outputs = clsmodel(attens)
                 gen_fts = auDecoder(attens, hidden_attens)
                 loss = loss_fn(outputs, labels) + args.lr_dec * decoder_loss_fn(gen_fts, org_fts)
             else:
+                outputs = clsmodel(auTmodel(features))
                 loss = loss_fn(outputs, labels)
             loss.backward()
             optimizer.step()
@@ -272,7 +274,10 @@ if __name__ == '__main__':
             features, labels = features.to(args.device), labels.to(args.device)
 
             with torch.no_grad():
-                attens, _ = auTmodel(features)
+                if includeAutoencoder(args):
+                    attens, _ = auTmodel(features)
+                else:
+                    attens = auTmodel(features)
                 outputs = clsmodel(attens)
                 _, preds = torch.max(outputs.detach(), dim=1)
             ttl_val_size += labels.shape[0]

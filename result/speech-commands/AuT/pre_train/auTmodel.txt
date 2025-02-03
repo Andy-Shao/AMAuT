@@ -1,13 +1,13 @@
 AudioTransform(
   (embedding): Embedding(
-    (restnet): RestNet(
+    (restnet): RestNetCT(
       (root): Sequential(
         (0): StdConv1d(80, 128, kernel_size=(7,), stride=(2,), padding=(3,), bias=False)
         (1): GroupNorm(32, 128, eps=1e-06, affine=True)
         (2): ReLU()
       )
       (maxPool): MaxPool1d(kernel_size=3, stride=2, padding=0, dilation=1, ceil_mode=False)
-      (layer1): ModuleList(
+      (layers): ModuleList(
         (0): RestNetBlock(
           (conv1): StdConv1d(128, 128, kernel_size=(1,), stride=(1,), bias=False)
           (gn1): GroupNorm(32, 128, eps=1e-06, affine=True)
@@ -28,9 +28,7 @@ AudioTransform(
           (gn3): GroupNorm(32, 512, eps=1e-06, affine=True)
           (relu): ReLU(inplace=True)
         )
-      )
-      (layer2): ModuleList(
-        (0): RestNetBlock(
+        (7): RestNetBlock(
           (conv1): StdConv1d(512, 256, kernel_size=(1,), stride=(1,), bias=False)
           (gn1): GroupNorm(32, 256, eps=1e-06, affine=True)
           (conv2): StdConv1d(256, 256, kernel_size=(3,), stride=(2,), padding=(1,), bias=False)
@@ -41,7 +39,7 @@ AudioTransform(
           (downsample): StdConv1d(512, 1024, kernel_size=(1,), stride=(2,), bias=False)
           (ds_gn): GroupNorm(1024, 1024, eps=1e-05, affine=True)
         )
-        (1-8): 8 x RestNetBlock(
+        (8-15): 8 x RestNetBlock(
           (conv1): StdConv1d(1024, 256, kernel_size=(1,), stride=(1,), bias=False)
           (gn1): GroupNorm(32, 256, eps=1e-06, affine=True)
           (conv2): StdConv1d(256, 256, kernel_size=(3,), stride=(1,), padding=(1,), bias=False)
