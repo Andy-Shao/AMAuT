@@ -160,7 +160,7 @@ class TwoTFDataset(Dataset):
     
     def __getitem__(self, index):
         item, label = self.dataset[index]
-        x1, x2 = item, item
+        x1, x2 = item.clone(), item.clone()
         if self.tf1 is not None:
             x1 = self.tf1(x1)
         if self.tf2 is not None:
