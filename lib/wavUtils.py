@@ -268,10 +268,10 @@ class FbankPadding(nn.Module):
 
     def forward(self, fbank:torch.Tensor) -> torch.Tensor:
         from torch.nn.functional import pad
-        l = fbank.shape[1] - self.target_length
+        l = self.target_length - fbank.shape[1]
         if l > 0:
             assert l <= 3, 'target_length is too large'
-            fbank = pad(fbank, (0, l, 0, 0), mode='constant', value=0.)
+            fbank = pad(fbank, (0, l), mode='constant', value=0.)
         elif l < 0:
             fbank = fbank[:, 0:self.target_length]
         return fbank

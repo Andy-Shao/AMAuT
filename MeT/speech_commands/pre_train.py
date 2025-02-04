@@ -45,8 +45,8 @@ def build_model(args:argparse.Namespace) -> tuple[BiEmbedTransformer, AudioClass
         num_layers=[6, 8], in_shape=[args.n_mels, args.target_length]
     )
     embed2 = FreqEmbedding(
-        num_channels=81, embed_size=args.embed_size, marsked_rate=.15, width=128, 
-        num_layers=[6, 8], in_shape=[81, 320]
+        num_channels=80, embed_size=args.embed_size, marsked_rate=.15, width=128, 
+        num_layers=[6, 8], in_shape=[80, 100]
     )
     auT = BiEmbedTransformer(cfg=cfg, embed1=embed1, embed2=embed2).to(device=args.device)
     auC = AudioClassifier(config=cfg).to(device=args.device)
@@ -112,17 +112,22 @@ if __name__ == '__main__':
     tf_array = Components(transforms=[
         AudioPadding(max_ms=max_ms, sample_rate=sample_rate, random_shift=True),
         time_shift(shift_limit=.17, is_random=True, is_bidirection=True),
-        a_transforms.MelSpectrogram(
-            sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
-            mel_scale=mel_scale
-        ), # 80 x 100
-        AmplitudeToDB(top_db=80., max_out=2.),
-        MelSpectrogramPadding(target_length=args.target_length),
     ])
     train_dataset = TwoTFDataset(
         dataset=build_dataest(args=args, tsf=tf_array, mode='train'), 
-        tf1=FrequenceTokenTransformer(),
-        tf2=VisionTokenTransformer()
+        tf1=Components(transforms=[
+            a_transforms.MelSpectrogram(
+                sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
+                mel_scale=mel_scale
+            ), # 80 x 100
+            AmplitudeToDB(top_db=80., max_out=2.),
+            MelSpectrogramPadding(target_length=args.target_length),
+            FrequenceTokenTransformer()
+        ]),
+        tf2=Components(transforms=[
+            Fbank(sample_rate=sample_rate, num_mel_bins=args.n_mels),
+            FbankPadding(target_length=args.target_length)
+        ])
     )
     train_loader = DataLoader(
         dataset=train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=False, num_workers=args.num_workers
@@ -130,17 +135,28 @@ if __name__ == '__main__':
 
     tf_array = Components(transforms=[
         AudioPadding(max_ms=max_ms, sample_rate=sample_rate, random_shift=False),
-        a_transforms.MelSpectrogram(
-            sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
-            mel_scale=mel_scale
-        ),
-        AmplitudeToDB(top_db=80., max_out=2.),
-        MelSpectrogramPadding(target_length=args.target_length),
+        # a_transforms.MelSpectrogram(
+        #     sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
+        #     mel_scale=mel_scale
+        # ),
+        # AmplitudeToDB(top_db=80., max_out=2.),
+        # MelSpectrogramPadding(target_length=args.target_length),
     ])
     val_dataset = TwoTFDataset(
         dataset=build_dataest(args=args, tsf=tf_array, mode='test'),
-        tf1=FrequenceTokenTransformer(),
-        tf2=VisionTokenTransformer()
+        tf1=Components(transforms=[
+            a_transforms.MelSpectrogram(
+                sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
+                mel_scale=mel_scale
+            ), # 80 x 100
+            AmplitudeToDB(top_db=80., max_out=2.),
+            MelSpectrogramPadding(target_length=args.target_length),
+            FrequenceTokenTransformer()
+        ]),
+        tf2=Components(transforms=[
+            Fbank(sample_rate=sample_rate, num_mel_bins=args.n_mels),
+            FbankPadding(target_length=args.target_length)
+        ])
     )
     val_loader = DataLoader(
         dataset=val_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=args.num_workers
