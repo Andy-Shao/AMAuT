@@ -8,20 +8,18 @@ from tqdm import tqdm
 
 import torch
 from torch import optim
-from torch import nn
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader
 from torchaudio import transforms as a_transforms
 
 from lib.toolkit import print_argparse, relative_path
 from lib.wavUtils import Components, AudioPadding, time_shift, AmplitudeToDB, MelSpectrogramPadding, FrequenceTokenTransformer, VisionTokenTransformer
-from lib.scDataset import SpeechCommandsDataset
 from lib.datasets import TwoTFDataset
 from AuT.lib.model import cal_model_tag, AudioClassifier
 from AuT.speech_commands.pre_train import build_dataest, op_copy, lr_scheduler
 from AuT.lib.config import transformer_cfg, classifier_cfg
 from AuT.lib.loss import CrossEntropyLabelSmooth
-from MsT.lib.multi_embed import FreqEmbedding
-from MsT.lib.model import BiEmbedTransformer
+from MeT.lib.multi_embed import FreqEmbedding
+from MeT.lib.model import BiEmbedTransformer
 
 def build_optim(args:argparse.Namespace, auT:BiEmbedTransformer, auC:AudioClassifier) -> optim.Optimizer:
     param_group = []
@@ -100,7 +98,7 @@ if __name__ == '__main__':
 
     wandb_run = wandb.init(
         project='AC-PT (AuT)', name=cal_model_tag(dataset_tag=args.dataset, pre_tag=args.arch), 
-        mode='online' if args.wandb else 'disabled', config=args, tags=['Audio Classification', args.dataset, 'AuT'])
+        mode='online' if args.wandb else 'disabled', config=args, tags=['Audio Classification', args.dataset, 'MeT'])
     
     max_ms=1000
     sample_rate=16000
