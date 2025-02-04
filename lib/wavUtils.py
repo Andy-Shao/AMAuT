@@ -4,6 +4,7 @@ import numpy as np
 
 import torch 
 import torch.nn as nn
+import torchaudio
 
 class BackgroundNoise(nn.Module):
     def __init__(self, noise_level: float, noise: torch.Tensor, is_random=False):
@@ -239,3 +240,38 @@ class RandomTimeMask(nn.Module):
         for cfg in self.cfgs:
             x = mask_along_axis(specgram=x, mask_param=cfg['mask_param'], mask_value=0., axis=2, p=cfg['p'])
         return x
+    
+class Fbank(nn.Module):
+    def __init__(self, sample_rate:int, num_mel_bins:int, window_type='hanning', dither=0.0, frame_shift=10):
+        super(Fbank, self).__init__()
+        self.sample_rate = sample_rate
+        self.num_mel_bins = num_mel_bins
+        self.windown_type = window_type
+        self.dither = dither
+        self.frame_shift = frame_shift
+
+    def forward(self, wavform:torch.Tensor) -> torch.Tensor:
+        wavform = wavform - wavform.mean()
+        fbank = torchaudio.compliance.kaldi.fbank(
+            waveform=wavform, htk_compat=False, sample_frequency=self.sample_rate, use_energy=False,
+            window_type=self.windown_type, num_mel_bins=self.num_mel_bins, dither=self.dither,
+            frame_shift=self.frame_shift
+        )
+        fbank = fbank.transpose(1, 0)
+        return fbank
+
+class FbankPadding(nn.Module):
+    def __init__(self, target_length):
+        super(FbankPadding, self).__init__()
+        assert target_length > 0, 'No support'
+        self.target_length = target_length
+
+    def forward(self, fbank:torch.Tensor) -> torch.Tensor:
+        from torch.nn.functional import pad
+        l = fbank.shape[1] - self.target_length
+        if l > 0:
+            assert l <= 3, 'target_length is too large'
+            fbank = pad(fbank, (0, l, 0, 0), mode='constant', value=0.)
+        elif l < 0:
+            fbank = fbank[:, 0:self.target_length]
+        return fbank
