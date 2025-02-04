@@ -1,3 +1,5 @@
+from ml_collections import ConfigDict
+
 import torch
 from torch import nn
 
@@ -21,6 +23,13 @@ class FreqEmbedding(nn.Module):
         x = x.transpose(2, 1)
         return x
     
+    def build(cfg:ConfigDict, tag:str):
+        c = cfg[tag]
+        return FreqEmbedding(
+            num_channels=c.num_channels, embed_size=c.embed_size, marsked_rate=c.marsked_rate,
+            width=c.width, num_layers=c.num_layers, in_shape=c.in_shape
+        )
+    
 class VisionTransformerEmbedding(nn.Module):
     def __init__(self, num_channels:int, embed_size:int, marsked_rate:float, width=64, num_layers=[6,8], in_shape=[80,100]):
         super(VisionTransformerEmbedding, self).__init__()
@@ -39,6 +48,13 @@ class VisionTransformerEmbedding(nn.Module):
         x = self.patch_embedding(x)
         x = x.transpose(2, 1)
         return x
+    
+    def build(cfg:ConfigDict, tag:str):
+        c = cfg[tag]
+        return VisionTransformerEmbedding(
+            num_channels=c.num_channels, embed_size=c.embed_size, marsked_rate=c.marsked_rate, 
+            width=c.width, num_layers=c.num_layers, in_shape=c.in_shape
+        )
 
 class RestNet2d(nn.Module):
     def __init__(self, cin:int, width:int, ng:int, num_layers:list[int]):
