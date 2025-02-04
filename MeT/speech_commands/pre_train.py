@@ -11,8 +11,9 @@ from torch import optim
 from torch.utils.data import DataLoader
 from torchaudio import transforms as a_transforms
 
-from lib.toolkit import print_argparse, relative_path
-from lib.wavUtils import Components, AudioPadding, time_shift, AmplitudeToDB, MelSpectrogramPadding, FrequenceTokenTransformer, VisionTokenTransformer
+from lib.toolkit import print_argparse, relative_path, store_model_structure_to_txt
+from lib.wavUtils import Components, AudioPadding, time_shift, AmplitudeToDB, MelSpectrogramPadding, FrequenceTokenTransformer
+from lib.wavUtils import Fbank, FbankPadding, VisionTokenTransformer
 from lib.datasets import TwoTFDataset
 from AuT.lib.model import cal_model_tag, AudioClassifier
 from AuT.speech_commands.pre_train import build_dataest, op_copy, lr_scheduler
@@ -146,6 +147,8 @@ if __name__ == '__main__':
     )
 
     auTModel, clsModel = build_model(args=args)
+    store_model_structure_to_txt(model=auTModel, output_path=relative_path(args, 'auTModel.txt'))
+    store_model_structure_to_txt(model=clsModel, output_path=relative_path(args, 'clsModel.txt'))
     loss_fn = CrossEntropyLabelSmooth(num_classes=args.class_num, use_gpu=torch.cuda.is_available(), epsilon=args.smooth)
     optimizer = build_optim(args=args, auT=auTModel, auC=clsModel)
 
