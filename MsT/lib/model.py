@@ -3,21 +3,14 @@ from ml_collections import ConfigDict
 import torch
 from torch import nn
 
-from .multi_embed import Embedding
 from AuT.lib.model import AttentionBlock
 
-class MultiEmbedTransformer(nn.Module):
-    def __init__(self, cfg: ConfigDict):
-        super(MultiEmbedTransformer, self).__init__()
+class BiEmbedTransformer(nn.Module):
+    def __init__(self, cfg: ConfigDict, embed1:nn.Module, embed2:nn.Module):
+        super(BiEmbedTransformer, self).__init__()
         embed_size = cfg.embedding['embed_size']
-        self.embed1 = Embedding(
-            num_channels=cfg.embed1['num_channels'], embed_size=embed_size, marsked_rate=cfg.embed1['marsked_rate'],
-            width=cfg.embed1['width'], num_layers=cfg.embed1['num_layers'], in_shape=cfg.embed1['in_shape']
-        )
-        self.embed2 = Embedding(
-            num_channels=cfg.embed2['num_channels'], embed_size=embed_size, marsked_rate=cfg.embed2['marsked_rate'],
-            width=cfg.embed2['width'], num_layers=cfg.embed2['num_layers'], in_shape=cfg.embed2['in_shape']
-        )
+        self.embed1 = embed1
+        self.embed2 = embed2
         self.sep = nn.Parameter(torch.zeros(1, 1, embed_size))
         self.tf_norm = nn.LayerNorm(embed_size, eps=1e-6)
         self.layers = nn.ModuleList([AttentionBlock(cfg) for _ in range(cfg.transform['layer_num'])])
