@@ -286,8 +286,8 @@ if __name__ == '__main__':
         print(f'Validation size:{ttl_val_size:.0f}, accuracy:{ttl_val_accu:.2f}%')
         if max_val_accu < ttl_val_accu:
             max_val_accu = ttl_val_accu
-            torch.save(auTmodel.state_dict(), relative_path(args, 'AuT.pt'))
-            torch.save(clsmodel.state_dict(), relative_path(args, 'AuT-Cls.pt'))
+        torch.save(auTmodel.state_dict(), relative_path(args, 'AuT.pt'))
+        torch.save(clsmodel.state_dict(), relative_path(args, 'AuT-Cls.pt'))
 
         wandb.log({
             'Train/Accu': ttl_train_corr/ttl_train_size * 100.,
