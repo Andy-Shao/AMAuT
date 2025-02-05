@@ -284,10 +284,10 @@ if __name__ == '__main__':
             ttl_val_corr += (preds == labels).sum().cpu().item()
         ttl_val_accu = ttl_val_corr/ttl_val_size * 100.
         print(f'Validation size:{ttl_val_size:.0f}, accuracy:{ttl_val_accu:.2f}%')
-        if max_val_accu < ttl_val_accu:
+        if max_val_accu <= ttl_val_accu:
             max_val_accu = ttl_val_accu
-        torch.save(auTmodel.state_dict(), relative_path(args, 'AuT.pt'))
-        torch.save(clsmodel.state_dict(), relative_path(args, 'AuT-Cls.pt'))
+            torch.save(auTmodel.state_dict(), relative_path(args, 'AuT.pt'))
+            torch.save(clsmodel.state_dict(), relative_path(args, 'AuT-Cls.pt'))
 
         wandb.log({
             'Train/Accu': ttl_train_corr/ttl_train_size * 100.,
