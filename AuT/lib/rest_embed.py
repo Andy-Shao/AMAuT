@@ -15,7 +15,7 @@ class Embedding(nn.Module):
         elif arch == 'CT':
             self.restnet = RestNetCT(cin=num_channels, width=width, ng=ng, num_layers=num_layers)
         self.drop_out = nn.Dropout(p=marsked_rate)
-        self.patch_embedding = nn.Conv1d(in_channels=width*(2**(1+len(in_shape))), out_channels=embed_size, kernel_size=1, stride=1, padding=0)
+        self.patch_embedding = nn.Conv1d(in_channels=width*(2**(1+len(num_layers))), out_channels=embed_size, kernel_size=1, stride=1, padding=0)
         self.pos_embed = nn.Parameter(torch.zeros(1, in_shape[0], in_shape[1]))
         torch.nn.init.trunc_normal_(self.pos_embed, std=.02)
 
