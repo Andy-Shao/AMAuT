@@ -132,12 +132,13 @@ class ClipDataset(Dataset):
         return self.dataset[self.indexes[index]]
     
 class TransferDataset(Dataset):
-    def __init__(self, dataset: Dataset, data_tf:nn.Module=None, label_tf:nn.Module=None, device='cpu') -> None:
+    def __init__(self, dataset: Dataset, data_tf:nn.Module=None, label_tf:nn.Module=None, device='cpu', keep_cpu=True) -> None:
         super().__init__()
         self.dataset = dataset
-        self.data_tf = data_tf if device == 'cpu' else data_tf.to(device=device)
-        self.label_tf = label_tf if device == 'cpu' else label_tf.to(device=device)
-        self.device = 'cpu'
+        self.data_tf = data_tf if device == 'cpu' or data_tf is None else data_tf.to(device=device)
+        self.label_tf = label_tf if device == 'cpu' or label_tf is None else label_tf.to(device=device)
+        self.device = device
+        self.keep_cpu = keep_cpu
 
     def __len__(self):
         return len(self.dataset)
@@ -145,12 +146,17 @@ class TransferDataset(Dataset):
     def __getitem__(self, index) -> tuple[torch.Tensor, int]:
         feature, label = self.dataset[index]
         if self.device != 'cpu':
-            feature, label = feature.to(self.device), label.to(self.device)
+            feature = feature.to(self.device)
+            label = label.to(self.device) if isinstance(label, torch.Tensor) else label
         if self.data_tf is not None:
             feature = self.data_tf(feature)
         if self.label_tf is not None:
             label = self.label_tf(label)
-        return feature, label
+
+        if self.device != 'cpu' and self.keep_cpu:
+            return feature.cpu(), label.cpu() if isinstance(label, torch.Tensor) else label
+        else:
+            return feature, label
 
 class TwoTFDataset(Dataset):
     def __init__(self, dataset:Dataset, tf1:nn.Module=None, tf2:nn.Module=None):

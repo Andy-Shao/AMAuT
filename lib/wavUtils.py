@@ -65,11 +65,10 @@ class pad_trunc(nn.Module):
 class Components(nn.Module):
     def __init__(self, transforms: list) -> None:
         super().__init__()
-        self.transforms = transforms
+        assert transforms is not None, 'No support'
+        self.transforms = nn.ModuleList(transforms)
 
     def forward(self, wavform: torch.Tensor) -> torch.Tensor:
-        if self.transforms is None:
-            return None
         for transform in self.transforms:
             wavform = transform(wavform)
         return wavform

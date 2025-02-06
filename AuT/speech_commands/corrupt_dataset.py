@@ -1,17 +1,18 @@
 # containminate dataset
 import argparse
-import os
 
 import torch
+from torchaudio import transforms
 
 from lib.toolkit import print_argparse
-from lib.wavUtils import Components, BackgroundNoise, AudioPadding
+from lib.wavUtils import Components, BackgroundNoise, AudioPadding, time_shift
 from lib.scDataset import BackgroundNoiseDataset
+from lib.datasets import load_from, TransferDataset
 from AuT.speech_commands.pre_train import build_dataest
 
-def store_to(dataset: torch.utils.data.Dataset, root_path:str, index_file_name:str, args:argparse.Namespace, data_transf=None, label_transf=None) -> None:
+def store_to(dataset: torch.utils.data.Dataset, root_path:str, index_file_name:str, args:argparse.Namespace, data_transf=None, label_transf=None, parallel=False) -> None:
     from lib.datasets import store_to as single_store_to, multi_process_store_to
-    if args.parallel:
+    if parallel:
         data_loader = torch.utils.data.DataLoader(dataset=dataset, batch_size=256, shuffle=False, drop_last=False, num_workers=args.num_workers)
         multi_process_store_to(loader=data_loader, root_path=root_path, index_file_name=index_file_name, data_transf=data_transf, label_transf=label_transf)
     else:
@@ -60,4 +61,18 @@ if __name__ == '__main__':
     ])
     origin_dataset = build_dataest(args=args, tsf=audio_tsf, mode='test')
     print('Generate containminated dataset')
-    store_to(dataset=origin_dataset, root_path=args.output_path, index_file_name=args.meta_file_name, args=args)
+    store_to(dataset=origin_dataset, root_path=args.output_path, index_file_name=args.meta_file_name, args=args, parallel=args.parallel)
+
+    origin_dataset = load_from(root_path=args.output_path, index_file_name=args.meta_file_name)
+    print('Weak augmentation')
+    weak_path = f'{args.output_path}-weak'
+    store_to(dataset=origin_dataset, root_path=weak_path, index_file_name=args.meta_file_name, args=args, parallel=args.parallel)
+
+    print('Strong augmentation')
+    strong_path = f'{args.output_path}-strong'
+    strong_tf = Components(transforms=[
+        transforms.PitchShift(sample_rate=args.sample_rate, n_steps=4, n_fft=512),
+        time_shift(shift_limit=.25, is_random=True, is_bidirection=True)
+    ])
+    strong_dataset = TransferDataset(dataset=origin_dataset, data_tf=strong_tf, device=args.device)
+    store_to(dataset=strong_dataset, root_path=strong_path, index_file_name=args.meta_file_name, args=args, parallel=False)
