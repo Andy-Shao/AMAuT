@@ -71,8 +71,8 @@ if __name__ == '__main__':
     print('Strong augmentation')
     strong_path = f'{args.output_path}-strong'
     strong_tf = Components(transforms=[
-        transforms.PitchShift(sample_rate=args.sample_rate, n_steps=4, n_fft=512),
-        time_shift(shift_limit=.25, is_random=True, is_bidirection=True)
+        transforms.PitchShift(sample_rate=args.sample_rate, n_steps=4, n_fft=512), # replace with random pitch shift
+        time_shift(shift_limit=.17, is_random=True, is_bidirection=True)
     ])
     strong_dataset = TransferDataset(dataset=origin_dataset, data_tf=strong_tf, device=args.device)
     store_to(dataset=strong_dataset, root_path=strong_path, index_file_name=args.meta_file_name, args=args, parallel=False)
