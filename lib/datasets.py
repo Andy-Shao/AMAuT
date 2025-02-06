@@ -132,17 +132,20 @@ class ClipDataset(Dataset):
         return self.dataset[self.indexes[index]]
     
 class TransferDataset(Dataset):
-    def __init__(self, dataset: Dataset, data_tf=None, label_tf=None) -> None:
+    def __init__(self, dataset: Dataset, data_tf:nn.Module=None, label_tf:nn.Module=None, device='cpu') -> None:
         super().__init__()
         self.dataset = dataset
-        self.data_tf = data_tf
-        self.label_tf = label_tf
+        self.data_tf = data_tf if device == 'cpu' else data_tf.to(device=device)
+        self.label_tf = label_tf if device == 'cpu' else label_tf.to(device=device)
+        self.device = 'cpu'
 
     def __len__(self):
         return len(self.dataset)
     
     def __getitem__(self, index) -> tuple[torch.Tensor, int]:
         feature, label = self.dataset[index]
+        if self.device != 'cpu':
+            feature, label = feature.to(self.device), label.to(self.device)
         if self.data_tf is not None:
             feature = self.data_tf(feature)
         if self.label_tf is not None:

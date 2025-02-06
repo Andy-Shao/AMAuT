@@ -9,6 +9,7 @@ from torch.utils.data import DataLoader
 
 from lib.toolkit import print_argparse, relative_path, count_ttl_params
 from lib.wavUtils import Components, AudioPadding, AmplitudeToDB, MelSpectrogramPadding, FrequenceTokenTransformer
+from lib.datasets import load_from
 from AuT.speech_commands.pre_train import build_dataest, build_model
 from AuT.lib.model import AudioTransform, AudioClassifier
 
@@ -72,6 +73,7 @@ if __name__ == '__main__':
         os.makedirs(args.full_output_path)
     except:
         pass
+    args.meta_file_name = 'speech_commands_meta.csv'
     torch.backends.cudnn.benchmark = True
     accu_record = pd.DataFrame(columns=['dataset', 'algorithm', 'tta-operation', 'corruption', 'accuracy', 'error', 'severity level', 'number of weight'])
     
@@ -107,11 +109,16 @@ if __name__ == '__main__':
     print('Origin')
     load_model(args=args, auT=auTmodel, auC=clsmodel, mode='original')
     accu = inference(auT=auTmodel, auC=clsmodel, data_loader=test_loader, args=args)
-    accu_record.loc[len(accu_record)] = [args.dataset, args.arch, 'AuT', pd.NA, accu, 100.0-accu, 0., num_weight]
+    accu_record.loc[len(accu_record)] = [args.dataset, args.arch, pd.NA, pd.NA, accu, 100.0-accu, 0., num_weight]
     print(f'Original testing -- accuracy: {accu}%, sample size: {len(test_dataset)}')
 
-    # Corruption
-    # TODO
+    print('Corruption')
+    corrupted_dataset = load_from(root_path=args.corrupted_data_root_path, index_file_name=args.meta_file_name, data_tf=tf_array)
+    corrupted_loader = DataLoader(dataset=corrupted_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=args.num_workers)
+    load_model(args=args, auT=auTmodel, auC=clsmodel, mode='original')
+    accu = inference(auT=auTmodel, auC=clsmodel, data_loader=corrupted_loader, args=args)
+    accu_record.loc[len(accu_record)] = [args.dataset, args.arch, pd.NA, args.corruption, accu, 100.-accu, args.severity_level, num_weight]
+    print(f'Corrupted testing -- accuracy: {accu}%, sample size: {len(corrupted_dataset)}')
 
     # Adaptation
     # TODO
