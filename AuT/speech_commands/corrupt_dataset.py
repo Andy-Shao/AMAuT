@@ -63,16 +63,16 @@ if __name__ == '__main__':
     print('Generate containminated dataset')
     store_to(dataset=origin_dataset, root_path=args.output_path, index_file_name=args.meta_file_name, args=args, parallel=args.parallel)
 
-    origin_dataset = load_from(root_path=args.output_path, index_file_name=args.meta_file_name)
-    print('Weak augmentation')
-    weak_path = f'{args.output_path}-weak'
-    store_to(dataset=origin_dataset, root_path=weak_path, index_file_name=args.meta_file_name, args=args, parallel=args.parallel)
+    # origin_dataset = load_from(root_path=args.output_path, index_file_name=args.meta_file_name)
+    # print('Weak augmentation')
+    # weak_path = f'{args.output_path}-weak'
+    # store_to(dataset=origin_dataset, root_path=weak_path, index_file_name=args.meta_file_name, args=args, parallel=args.parallel)
 
-    print('Strong augmentation')
-    strong_path = f'{args.output_path}-strong'
-    strong_tf = Components(transforms=[
-        transforms.PitchShift(sample_rate=args.sample_rate, n_steps=4, n_fft=512), # replace with random pitch shift
-        time_shift(shift_limit=.17, is_random=True, is_bidirection=True)
-    ])
-    strong_dataset = TransferDataset(dataset=origin_dataset, data_tf=strong_tf, device=args.device)
-    store_to(dataset=strong_dataset, root_path=strong_path, index_file_name=args.meta_file_name, args=args, parallel=False)
+    # print('Strong augmentation')
+    # strong_path = f'{args.output_path}-strong'
+    # strong_tf = Components(transforms=[
+    #     transforms.PitchShift(sample_rate=args.sample_rate, n_steps=4, n_fft=512), # replace with random pitch shift
+    #     time_shift(shift_limit=.17, is_random=True, is_bidirection=True)
+    # ])
+    # strong_dataset = TransferDataset(dataset=origin_dataset, data_tf=strong_tf, device=args.device)
+    # store_to(dataset=strong_dataset, root_path=strong_path, index_file_name=args.meta_file_name, args=args, parallel=False)
