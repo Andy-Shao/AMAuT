@@ -175,3 +175,59 @@ class TwoTFDataset(Dataset):
         if self.tf2 is not None:
             x2 = self.tf2(x2)
         return x1, x2, label
+    
+class FewShotDataset(Dataset):
+    def __init__(self, dataset:Dataset, output_path: str, mode:str, seed = 2025, fs_num = 10):
+        super(FewShotDataset, self).__init__()
+        assert mode in ['fewshot', 'residual'], 'No support'
+        self.mode = mode
+        self.dataset = dataset
+        self.__split_test__()
+
+    def __split_test__(self, fs_file_name='test-fewshot.txt', res_file_name='test-residual.txt'):
+        full_fs_name = os.path.join(self.output_path, fs_file_name)
+        full_res_name = os.path.join(self.output_path, res_file_name)
+        if os.path.exists(full_fs_name):
+            if self.mode == 'fewshot':
+                with open(full_fs_name, mode='tr', newline='\n') as f:
+                    lines = f.readlines()
+            elif self.mode == 'residual':
+                with open(full_res_name, mode='tr', newline='\n') as f:
+                    lines = f.readlines()
+            else:
+                raise Exception('No support')
+            self.data_index = [line.rstrip('\n') for line in lines]
+        else:
+            from numpy.random import MT19937, RandomState, SeedSequence
+            rs = RandomState(MT19937(SeedSequence(self.seed)))
+            data_lists = {}
+            for index, (feature, label) in enumerate(self.dataset):
+                if label in data_lists:
+                    data_lists[label].append(index)
+                else:
+                    data_lists[label] = [index]
+            fs_indexes = []
+            res_indexes = []
+            for key, value in data_lists.items():
+                fs_indexes += [it for it in rs.choice(value, size=self.fs_num, replace=False)]
+                res_indexes += [it for it in value if it not in fs_indexes]
+
+            with open(full_fs_name, mode='wt', newline='\n') as f:
+                for it in fs_indexes:
+                    f.write(str(it)+'\n')
+            with open(full_res_name, mode='wt', newline='\n') as f:
+                for it in res_indexes:
+                    f.write(str(it)+'\n')
+            if self.mode == 'fewshot':
+                self.data_index = fs_indexes
+            elif self.mode == 'residual':
+                self.data_index = res_indexes
+            else:
+                raise Exception('No support')
+            
+    def __len__(self):
+        return len(self.data_index)
+    
+    def __getitem__(self, index):
+        index = self.data_index[index]
+        return self.dataset[index]
