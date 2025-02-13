@@ -14,6 +14,7 @@
 # yt-dlp --format mp4 --download-sections "*${start_time}-${end_time}" "https://www.youtube.com/watch?v=${video_id}" -o "vggsound_videos/${video_id}.mp4"
 
 # yt-dlp --format mp4 --download-sections "*1-11" "https://www.youtube.com/watch?v=---g-f_I2yQ" -o 'my.mp4'
+# yt-dlp -x --audio-format wav --download-sections "*1-11" "https://www.youtube.com/watch?v=---g-f_I2yQ" -o 'my'
 
 # import yt_dlp
 import os
