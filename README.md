@@ -39,8 +39,8 @@ it is marked by the `True` value of `the "is_unknown"` feature). Their function 
 from unrecognized ones.
 
 + Sample size: 64721 (train: 51088, test: 6835, validation: 6798)
-+ sample rate: 16000
-+ sampel data shape: [1, 5945 - 16000]
++ Sampling rate: 16000
++ Sample data shape: [1, 5945 - 16000]
 
 |background noise type|sample data shape|sample rate|
 |--|--|--|
@@ -54,6 +54,16 @@ from unrecognized ones.
 [Speech Commands Dataset Link](https://research.google/blog/launching-the-speech-commands-dataset/)<br/>
 [Download Link](http://download.tensorflow.org/data/speech_commands_v0.01.tar.gz)<br/>
 [TensorFlow Document](https://www.tensorflow.org/datasets/community_catalog/huggingface/speech_commands)
+
+### VGG-Sound
+VGG-Sound is an audio-visual correspondent dataset consisting of short clips of audio sounds, extracted from videos uploaded to YouTube
+
++ Sample size: 199467 (train: 183730, test: 15446)
++ Sampling rate: ?
++ Sample data shape: ?
+
+[VGG-Sound Official Website Link](https://www.robots.ox.ac.uk/~vgg/data/vggsound/)<br/>
+[Download Link](https://github.com/hche11/VGGSound/tree/master)
 
 ## Code Reference
 + [CoNMix](https://github.com/vcl-iisc/CoNMix/tree/master)
