@@ -59,7 +59,7 @@ from unrecognized ones.
 VGG-Sound is an audio-visual correspondent dataset consisting of short clips of audio sounds, extracted from videos uploaded to YouTube
 
 + Sample size: 199467 (train: 183730, test: 15446)
-+ Sampling rate: ?
++ Sampling rate: 48000
 + Sample data shape: ?
 
 [VGG-Sound Official Website Link](https://www.robots.ox.ac.uk/~vgg/data/vggsound/)<br/>
