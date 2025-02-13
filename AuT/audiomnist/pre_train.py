@@ -14,7 +14,7 @@ from torch import nn
 
 from lib.toolkit import print_argparse, relative_path, store_model_structure_to_txt
 from lib.wavUtils import Components, AudioPadding, AmplitudeToDB, time_shift, MelSpectrogramPadding, FrequenceTokenTransformer
-from lib.datasets import FilterAudioMNIST
+from lib.datasets import FilterAudioMNIST, ClipDataset
 from AuT.lib.model import AudioTransform, AudioClassifier, AudioDecoder
 from AuT.lib.config import transformer_cfg, classifier_cfg
 from AuT.speech_commands.pre_train import includeAutoencoder, decoder_cfg, op_copy, lr_scheduler
@@ -145,7 +145,8 @@ if __name__ == '__main__':
         MelSpectrogramPadding(target_length=args.target_length),
         FrequenceTokenTransformer()
     ])
-    val_dataset = FilterAudioMNIST(root_path=args.dataset_root_path, data_tsf=tf_array, include_rate=False, filter_fn=lambda x: x['accent'] != 'German')
+    # val_dataset = FilterAudioMNIST(root_path=args.dataset_root_path, data_tsf=tf_array, include_rate=False, filter_fn=lambda x: x['accent'] != 'German')
+    val_dataset = ClipDataset(dataset=train_dataset, rate=.3)
     val_loader = DataLoader(dataset=val_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=args.num_workers)
 
     auTmodel, clsmodel, _ = build_model(args)
