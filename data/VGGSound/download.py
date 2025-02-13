@@ -34,6 +34,15 @@ if __name__ == '__main__':
     meta_info = pd.read_csv(args.meta_file_path, sep=',')
     meta_info.columns = ['ID', 'start_sec', 'label', 'split']
 
+    label_dic = {}
+    for index, label in enumerate(meta_info['label'].unique()):
+        label_dic[label] = index
+
+    label_info = pd.DataFrame(columns=['label', 'description'])
+    for k, v in label_dic.items():
+        label_info.loc[len(label_info)] = [v, k]
+    label_info.to_csv(os.path.join(args.output_path, 'label_dic.csv'), index=False)
+
     # for row_id, row in tqdm(meta_info.iterrows(), total=meta_info.shape[0]):
     for row_id, row in meta_info.iterrows():
         print(f'#### [{row_id}/{meta_info.shape[0]}]')
@@ -44,7 +53,7 @@ if __name__ == '__main__':
         output_folder = os.path.join(args.output_path, row['split'])
         if not os.path.exists(output_folder):
             os.mkdir(output_folder)
-        output_file_name = f'{video_id.lstrip('-')}_{start_time:06d}.mp4'
+        output_file_name = f'{video_id.lstrip('-')}_{start_time:06d}_{label_dic[row['label']]}.mp4'
         output_path = os.path.join(output_folder, output_file_name)
         command = f"yt-dlp --format bestvideo+bestaudio --merge-output-format mp4 --download-sections '*{start_time}-{end_time}' {video_url} -o '{output_path}'"
         subprocess.call(

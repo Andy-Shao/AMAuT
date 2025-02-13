@@ -41,8 +41,14 @@ output_path = os.path.join(output_folder, )
 #     except Exception as e:
 #         print(f"Failed to download {video_id}: {e}")
 
-import subprocess
+# import subprocess
 
-subprocess.call(f"yt-dlp --format bestvideo+bestaudio --merge-output-format mp4 --download-sections '*{start_time}-{end_time}' {video_url} -o '{output_file_name}'", shell=True)
+# subprocess.call(f"yt-dlp --format bestvideo+bestaudio --merge-output-format mp4 --download-sections '*{start_time}-{end_time}' {video_url} -o '{output_file_name}'", shell=True)
 
-print("Download complete!")
+# print("Download complete!")
+
+import pandas as pd
+
+meta_info = pd.read_csv('/root/vggsound.csv', sep=',')
+meta_info.columns = ['ID', 'start_sec', 'label', 'split']
+print(meta_info['label'].unique())

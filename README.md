@@ -63,8 +63,8 @@ VGG-Sound is an audio-visual correspondent dataset consisting of short clips of 
 + Sample data shape: ?
 
 [VGG-Sound Official Website Link](https://www.robots.ox.ac.uk/~vgg/data/vggsound/)<br/>
-[Download Link](http://www.robots.ox.ac.uk/~vgg/data/vggsound/vggsound.csv)
-[VGG-Source Github](https://github.com/hche11/VGGSound/tree/master)
+[csv File Link](http://www.robots.ox.ac.uk/~vgg/data/vggsound/vggsound.csv)<br/>
+[VGG-Sound Github](https://github.com/hche11/VGGSound/tree/master)
 
 ## Code Reference
 + [CoNMix](https://github.com/vcl-iisc/CoNMix/tree/master)
