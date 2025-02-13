@@ -56,11 +56,11 @@ if __name__ == '__main__':
             os.mkdir(output_folder)
 
         if args.only_audio:
-            output_file_name = f"{video_id.lstrip('-')}_{start_time:06d}_{label_dic[row['label']]}"
+            output_file_name = f"f{video_id}_{start_time:06d}_{label_dic[row['label']]}"
             output_path = os.path.join(output_folder, output_file_name)
             command = f"yt-dlp -x --audio-format wav --download-sections '*{start_time}-{end_time}' '{video_url}' -o '{output_path}'"
         else:
-            output_file_name = f"{video_id.lstrip('-')}_{start_time:06d}_{label_dic[row['label']]}.mp4"
+            output_file_name = f"f{video_id}_{start_time:06d}_{label_dic[row['label']]}.mp4"
             output_path = os.path.join(output_folder, output_file_name)
             command = f"yt-dlp --format bestvideo+bestaudio --merge-output-format mp4 --download-sections '*{start_time}-{end_time}' {video_url} -o '{output_path}'"
         subprocess.call(
