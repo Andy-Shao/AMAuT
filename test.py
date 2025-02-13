@@ -15,7 +15,7 @@
 
 # yt-dlp --format mp4 --download-sections "*1-11" "https://www.youtube.com/watch?v=---g-f_I2yQ" -o 'my.mp4'
 
-import yt_dlp
+# import yt_dlp
 import os
 
 video_id = '---g-f_I2yQ'
@@ -26,19 +26,23 @@ output_folder = './'
 output_file_name = f'{video_id.lstrip('-')}_{start_time:06d}.mp4'
 output_path = os.path.join(output_folder, )
 
-ydl_opts = {
-    'format': 'mp4',
-    'paths': {'home': output_path},
-    'outtmpl': output_file_name,
-    'download_sections': { '*': f"{start_time}-{end_time}" },
-    'quiet': False
-}
+# ydl_opts = {
+#     'format': 'mp4',
+#     'paths': {'home': output_path},
+#     'outtmpl': output_file_name,
+#     'download_sections': { '*': '00:00:01-00:00:11' },
+#     'quiet': False
+# }
 
-with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-    try:
-        ydl.download([video_url])
-        print(f"Downloaded: {output_path}")
-    except Exception as e:
-        print(f"Failed to download {video_id}: {e}")
+# with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+#     try:
+#         ydl.download([video_url])
+#         print(f"Downloaded: {output_path}")
+#     except Exception as e:
+#         print(f"Failed to download {video_id}: {e}")
+
+import subprocess
+
+subprocess.call(f"yt-dlp --format bestvideo+bestaudio --merge-output-format mp4 --download-sections '*{start_time}-{end_time}' {video_url} -o '{output_file_name}'", shell=True)
 
 print("Download complete!")
