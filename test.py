@@ -11,4 +11,4 @@ print(file_path)
 
 # yt-dlp --format bestvideo+bestaudio --merge-output-format mp4 -o "videos/%(id)s.%(ext)s" https://www.youtube.com/watch?v=---g-f_I2yQ
 
-# yt-dlp --format bestvideo+bestaudio --merge-output-format mp4 -o "videos/%(id)s.%(ext)s" https://www.youtube.com/watch?v=---g-f_I2yQ
+# yt-dlp --format mp4 --download-sections "*${start_time}-${end_time}" "https://www.youtube.com/watch?v=${video_id}" -o "vggsound_videos/${video_id}.mp4"
