@@ -41,6 +41,7 @@ from unrecognized ones.
 + Sample size: 64721 (train: 51088, test: 6835, validation: 6798)
 + Sampling rate: 16000
 + Sample data shape: [1, 5945 - 16000]
++ Class Number: 30
 
 |background noise type|sample data shape|sample rate|
 |--|--|--|
@@ -56,12 +57,13 @@ from unrecognized ones.
 [TensorFlow Document](https://www.tensorflow.org/datasets/community_catalog/huggingface/speech_commands)
 
 ### ReefSet v1.0
-This dataset includes audio clips from coral reef habitats which across 16 datasets and 11 countries. The dataset includes 
-57074 samples, and each sample has 1.88 seconds in length. 
+This dataset includes audio clips from coral reef habitats across 16 datasets and 11 countries. The dataset includes 
+57074 samples and each sample is 1.88 seconds in length. 
 
 + Sample size: 57074
 + Sampling rate: 16000
 + Sampling data shape: ?
++ Class Number: 37
 
 [ReefSet Official Website Linke](https://zenodo.org/records/11071202)
 [Dataset Download Link](https://zenodo.org/records/11071202/files/ReefSet_v1.0.zip?download=1)
