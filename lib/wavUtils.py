@@ -182,7 +182,7 @@ class VisionTokenTransformer(nn.Module):
 class AudioPadding(nn.Module):
     def __init__(self, max_ms:int, sample_rate:int, random_shift:bool=False):
         super(AudioPadding, self).__init__()
-        self.length = sample_rate * (max_ms // 1000)
+        self.length = int(sample_rate * (max_ms / 1000))
         self.random_shift = random_shift
 
     def forward(self, x:torch.Tensor) -> torch.Tensor:
