@@ -19,12 +19,13 @@ conda install jupyter -y
 conda install matplotlib==3.8.4 -y 
 pip install wandb==0.17.1
 ```
+<!--
 Analysis environment
 ```shell
 conda create --name my-analysis python=3.9 -y
 conda activate my-analysis
 conda install conda-forge::tensorboard
-```
+```-->
 
 ## Processing
 
