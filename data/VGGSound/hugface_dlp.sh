@@ -26,3 +26,6 @@ wget https://huggingface.co/datasets/Loie/VGGSound/resolve/main/vggsound_16.tar.
 wget https://huggingface.co/datasets/Loie/VGGSound/resolve/main/vggsound_17.tar.gz?download=true -O 'vggsound_17.tar.gz'
 wget https://huggingface.co/datasets/Loie/VGGSound/resolve/main/vggsound_18.tar.gz?download=true -O 'vggsound_18.tar.gz'
 wget https://huggingface.co/datasets/Loie/VGGSound/resolve/main/vggsound_19.tar.gz?download=true -O 'vggsound_19.tar.gz'
+
+# rclone upload
+# rclone copy VGGSound/vggsound_00.tar.gz gdrive:/Datasets/VGGSound/ -P --drive-chunk-size 512M -vv
