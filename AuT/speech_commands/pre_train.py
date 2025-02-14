@@ -17,7 +17,7 @@ from lib.wavUtils import AudioPadding, Components, AmplitudeToDB, time_shift, Me
 from lib.scDataset import SpeechCommandsDataset
 from AuT.lib.model import AudioTransform, AudioClassifier, cal_model_tag, AudioDecoder
 from AuT.lib.loss import CrossEntropyLabelSmooth, CosineSimilarityLoss
-from AuT.lib.config import transformer_cfg, classifier_cfg, decoder_cfg
+from AuT.lib.config import decoder_cfg, CT_base
 
 def print_weight_num(auT:AudioTransform, auC:AudioClassifier, auD:AudioDecoder, args:argparse.Namespace) -> None:
     if includeAutoencoder(args):
@@ -90,24 +90,17 @@ def build_optimizer(args: argparse.Namespace, auT:nn.Module, auC:nn.Module, auD:
     return optimizer
 
 def build_model(args:argparse.Namespace) -> tuple[AudioTransform, AudioClassifier, AudioDecoder]:
-    config = ConfigDict()
-    config.embedding = ConfigDict()
-    config.embedding.channel_num = args.n_mels
-    config.embedding.marsked_rate = .15
-    config.embedding.embed_size = args.embed_size
-    config.embedding.in_shape = [args.n_mels, 104]
-    config.embedding.arch = args.arch
+    if args.arch_level == 'base':
+        config = CT_base(class_num=args.class_num, n_mels=args.n_mels)
+        config.embedding.in_shape = [args.n_mels, 104]
+        auTmodel = AudioTransform(config=config).to(device=args.device)
+        clsmodel = AudioClassifier(config=config).to(device=args.device)
 
-    transformer_cfg(cfg=config, embed_size=args.embed_size)
-    classifier_cfg(cfg=config, class_num=args.class_num)
-    auTmodel = AudioTransform(config=config).to(device=args.device)
-    clsmodel = AudioClassifier(config=config).to(device=args.device)
-
-    if includeAutoencoder(args):
-        decoder_cfg(cfg=config, embed_size=args.embed_size, n_mels=args.n_mels)
-        auDecoder = AudioDecoder(config=config).to(device=args.device)
-    else:
-        auDecoder = None
+        if includeAutoencoder(args):
+            decoder_cfg(cfg=config, embed_size=768, n_mels=args.n_mels)
+            auDecoder = AudioDecoder(config=config).to(device=args.device)
+        else:
+            auDecoder = None
 
     return auTmodel, clsmodel, auDecoder
 
@@ -143,7 +136,7 @@ if __name__ == '__main__':
     ap.add_argument('--smooth', type=float, default=.1)
     ap.add_argument('--early_stop', type=int, default=-1)
     ap.add_argument('--arch', type=str, default='CT', choices=['CT', 'CTA'])
-    ap.add_argument('--embed_size', type=int, default=768, choices=[768, 1024])
+    ap.add_argument('--arch_level', type=str, default='base')
 
     args = ap.parse_args()
     if args.dataset == 'speech-commands':
