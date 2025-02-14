@@ -3,66 +3,28 @@ import random
 import numpy as np
 import os
 import wandb
-from ml_collections import ConfigDict
 from tqdm import tqdm
 
 import torch
 from torchaudio import transforms as a_transforms
 from torch.utils.data import DataLoader
-from torch import optim
-from torch import nn
 
 from lib.toolkit import print_argparse, relative_path, store_model_structure_to_txt
 from lib.wavUtils import Components, AudioPadding, AmplitudeToDB, time_shift, MelSpectrogramPadding, FrequenceTokenTransformer
-from lib.datasets import FilterAudioMNIST, ClipDataset
-from AuT.lib.model import AudioTransform, AudioClassifier, AudioDecoder
-from AuT.lib.config import transformer_cfg, classifier_cfg
-from AuT.speech_commands.pre_train import includeAutoencoder, decoder_cfg, op_copy, lr_scheduler
+from lib.datasets import FilterAudioMNIST, ClipDataset, dataset_tag
+from AuT.lib.model import AudioTransform, AudioClassifier
+from AuT.speech_commands.pre_train import lr_scheduler, build_optimizer
 from AuT.lib.loss import CrossEntropyLabelSmooth
+from AuT.lib.config import CT_base
 
-def build_optimizer(args: argparse.Namespace, auT:nn.Module, auC:nn.Module, auD:AudioDecoder) -> optim.Optimizer:
-    param_group = []
-    learning_rate = args.lr
-    for k, v in auT.named_parameters():
-        param_group += [{'params':v, 'lr':learning_rate}]
-    for k, v in auC.named_parameters():
-        param_group += [{'params':v, 'lr':learning_rate}]
-    if includeAutoencoder(args):
-        for k, v in auD.named_parameters():
-            param_group += [{'params':v, 'lr':learning_rate}]
-    optimizer = optim.SGD(params=param_group)
-    optimizer = op_copy(optimizer)
-    return optimizer
+def build_model(args:argparse.Namespace) -> tuple[AudioTransform, AudioClassifier]:
+    if args.arch_level == 'base':
+        config = CT_base(class_num=args.class_num, n_mels=args.n_mels)
+        config.embedding.in_shape = [args.n_mels, args.target_length]
+        auTmodel = AudioTransform(config=config).to(device=args.device)
+        clsmodel = AudioClassifier(config=config).to(device=args.device)
 
-def build_model(args:argparse.Namespace) -> tuple[AudioTransform, AudioClassifier, AudioDecoder]:
-    config = ConfigDict()
-    config.embedding = ConfigDict()
-    config.embedding.channel_num = args.n_mels
-    config.embedding.marsked_rate = .15
-    config.embedding.embed_size = args.embed_size
-    config.embedding.in_shape = [args.n_mels, args.target_length]
-    config.embedding.arch = args.arch
-
-    transformer_cfg(cfg=config, embed_size=args.embed_size)
-    classifier_cfg(cfg=config, class_num=args.class_num)
-    auTmodel = AudioTransform(config=config).to(device=args.device)
-    clsmodel = AudioClassifier(config=config).to(device=args.device)
-
-    if includeAutoencoder(args):
-        decoder_cfg(cfg=config, embed_size=args.embed_size, n_mels=args.n_mels)
-        auDecoder = AudioDecoder(config=config).to(device=args.device)
-    else:
-        auDecoder = None
-    
-    return auTmodel, clsmodel, auDecoder
-
-def cal_model_tag(dataset_tag:str, pre_tag:str) -> str:
-    tag = pre_tag
-    if dataset_tag == 'AudioMNIST':
-        tag += '-AM'
-    else:
-        raise Exception('No Support')
-    return tag
+    return auTmodel, clsmodel
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
@@ -86,7 +48,7 @@ if __name__ == '__main__':
     ap.add_argument('--smooth', type=float, default=.1)
     ap.add_argument('--early_stop', type=int, default=-1)
     ap.add_argument('--arch', type=str, default='CT', choices=['CT', 'CTA'])
-    ap.add_argument('--embed_size', type=int, default=768, choices=[768, 1024])
+    ap.add_argument('--arch_level', type=str, default='base')
 
     args = ap.parse_args()
     if args.dataset == 'AudioMNIST':
@@ -110,7 +72,7 @@ if __name__ == '__main__':
     ##########################################
 
     wandb_run = wandb.init(
-        project='AC-PT (AuT)', name=cal_model_tag(dataset_tag=args.dataset, pre_tag=args.arch), 
+        project='AC-PT (AuT)', name=f'{args.arch}-{dataset_tag(args.dataset)}', 
         mode='online' if args.wandb else 'disabled', config=args, tags=['Audio Classification', args.dataset, 'AuT'])
 
     max_ms=1000
@@ -145,11 +107,11 @@ if __name__ == '__main__':
         MelSpectrogramPadding(target_length=args.target_length),
         FrequenceTokenTransformer()
     ])
-    # val_dataset = FilterAudioMNIST(root_path=args.dataset_root_path, data_tsf=tf_array, include_rate=False, filter_fn=lambda x: x['accent'] != 'German')
-    val_dataset = ClipDataset(dataset=train_dataset, rate=.3)
+    val_dataset = FilterAudioMNIST(root_path=args.dataset_root_path, data_tsf=tf_array, include_rate=False, filter_fn=lambda x: x['accent'] != 'German')
+    # val_dataset = ClipDataset(dataset=train_dataset, rate=.3)
     val_loader = DataLoader(dataset=val_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=args.num_workers)
 
-    auTmodel, clsmodel, _ = build_model(args)
+    auTmodel, clsmodel = build_model(args)
     store_model_structure_to_txt(model=auTmodel, output_path=relative_path(args, 'auTmodel.txt'))
     store_model_structure_to_txt(model=clsmodel, output_path=relative_path(args, 'clsmodel.txt'))
     optimizer = build_optimizer(args=args, auT=auTmodel, auC=clsmodel, auD=None)

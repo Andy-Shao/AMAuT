@@ -15,7 +15,8 @@ import torch.optim as optim
 from lib.toolkit import print_argparse, store_model_structure_to_txt, relative_path, count_ttl_params
 from lib.wavUtils import AudioPadding, Components, AmplitudeToDB, time_shift, MelSpectrogramPadding, FrequenceTokenTransformer, RandomPitchShift
 from lib.scDataset import SpeechCommandsDataset
-from AuT.lib.model import AudioTransform, AudioClassifier, cal_model_tag, AudioDecoder
+from lib.datasets import dataset_tag
+from AuT.lib.model import AudioTransform, AudioClassifier, AudioDecoder
 from AuT.lib.loss import CrossEntropyLabelSmooth, CosineSimilarityLoss
 from AuT.lib.config import decoder_cfg, CT_base
 
@@ -161,7 +162,7 @@ if __name__ == '__main__':
     ##########################################
 
     wandb_run = wandb.init(
-        project='AC-PT (AuT)', name=cal_model_tag(dataset_tag=args.dataset, pre_tag=args.arch), 
+        project='AC-PT (AuT)', name=f'{args.arch}-{dataset_tag(args.dataset)}', 
         mode='online' if args.wandb else 'disabled', config=args, tags=['Audio Classification', args.dataset, 'AuT'])
     
     max_ms=1000

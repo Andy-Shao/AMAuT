@@ -11,6 +11,14 @@ import torchaudio
 import torch
 from torch import nn
 
+def dataset_tag(dataset_name:str) -> str:
+    if dataset_name == 'speech-commands':
+        return 'SC'
+    elif dataset_name == 'AudioMNIST':
+        return 'AM'
+    else:
+        raise Exception('No support')
+
 class FilterAudioMNIST(Dataset):
     def __init__(self, root_path: str, filter_fn, data_tsf=None, include_rate=True):
         super(FilterAudioMNIST, self).__init__()
