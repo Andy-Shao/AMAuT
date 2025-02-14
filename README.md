@@ -69,7 +69,7 @@ This dataset includes audio clips from coral reef habitats across 16 datasets an
 [ReefSet Official Website Linke](https://zenodo.org/records/11071202)<br/>
 [Dataset Download Link](https://zenodo.org/records/11071202/files/ReefSet_v1.0.zip?download=1)
 
-### VGG-Sound
+<!-- ### VGG-Sound
 VGG-Sound is an audio-visual correspondent dataset consisting of short clips of audio sounds, extracted from videos uploaded to YouTube
 
 + Sample size: 199467 (train: 183730, test: 15446)
@@ -79,7 +79,7 @@ VGG-Sound is an audio-visual correspondent dataset consisting of short clips of 
 [VGG-Sound Official Website Link](https://www.robots.ox.ac.uk/~vgg/data/vggsound/)<br/>
 [csv File Link](http://www.robots.ox.ac.uk/~vgg/data/vggsound/vggsound.csv)<br/>
 [VGG-Sound Github](https://github.com/hche11/VGGSound/tree/master)<br/>
-[Hugging Face Image](https://huggingface.co/datasets/Loie/VGGSound/tree/main)
+[Hugging Face Image](https://huggingface.co/datasets/Loie/VGGSound/tree/main) -->
 
 ## Code Reference
 + [CoNMix](https://github.com/vcl-iisc/CoNMix/tree/master)
