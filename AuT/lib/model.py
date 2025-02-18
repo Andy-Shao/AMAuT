@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 from ml_collections import  ConfigDict
 
-from .rest_embed import Embedding as RestEmbedding
+from .embed import Embedding as RestEmbedding
 
 # def cal_model_tag(dataset_tag:str, pre_tag:str) -> str:
 #     from lib.datasets import dataset_tag as dt

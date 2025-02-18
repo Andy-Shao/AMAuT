@@ -1,6 +1,6 @@
 AudioTransform(
   (embedding): Embedding(
-    (restnet): RestNetCT(
+    (restnet): ResNetCT(
       (root): Sequential(
         (0): StdConv1d(80, 128, kernel_size=(7,), stride=(2,), padding=(3,), bias=False)
         (1): GroupNorm(32, 128, eps=1e-06, affine=True)
@@ -8,7 +8,7 @@ AudioTransform(
       )
       (maxPool): MaxPool1d(kernel_size=3, stride=2, padding=0, dilation=1, ceil_mode=False)
       (layers): ModuleList(
-        (0): RestNetBlock(
+        (0): ResNetBlock(
           (conv1): StdConv1d(128, 128, kernel_size=(1,), stride=(1,), bias=False)
           (gn1): GroupNorm(32, 128, eps=1e-06, affine=True)
           (conv2): StdConv1d(128, 128, kernel_size=(3,), stride=(1,), padding=(1,), bias=False)
@@ -19,7 +19,7 @@ AudioTransform(
           (downsample): StdConv1d(128, 512, kernel_size=(1,), stride=(1,), bias=False)
           (ds_gn): GroupNorm(512, 512, eps=1e-05, affine=True)
         )
-        (1-6): 6 x RestNetBlock(
+        (1-6): 6 x ResNetBlock(
           (conv1): StdConv1d(512, 128, kernel_size=(1,), stride=(1,), bias=False)
           (gn1): GroupNorm(32, 128, eps=1e-06, affine=True)
           (conv2): StdConv1d(128, 128, kernel_size=(3,), stride=(1,), padding=(1,), bias=False)
@@ -28,7 +28,7 @@ AudioTransform(
           (gn3): GroupNorm(32, 512, eps=1e-06, affine=True)
           (relu): ReLU(inplace=True)
         )
-        (7): RestNetBlock(
+        (7): ResNetBlock(
           (conv1): StdConv1d(512, 256, kernel_size=(1,), stride=(1,), bias=False)
           (gn1): GroupNorm(32, 256, eps=1e-06, affine=True)
           (conv2): StdConv1d(256, 256, kernel_size=(3,), stride=(2,), padding=(1,), bias=False)
@@ -39,7 +39,7 @@ AudioTransform(
           (downsample): StdConv1d(512, 1024, kernel_size=(1,), stride=(2,), bias=False)
           (ds_gn): GroupNorm(1024, 1024, eps=1e-05, affine=True)
         )
-        (8-15): 8 x RestNetBlock(
+        (8-15): 8 x ResNetBlock(
           (conv1): StdConv1d(1024, 256, kernel_size=(1,), stride=(1,), bias=False)
           (gn1): GroupNorm(32, 256, eps=1e-06, affine=True)
           (conv2): StdConv1d(256, 256, kernel_size=(3,), stride=(1,), padding=(1,), bias=False)
