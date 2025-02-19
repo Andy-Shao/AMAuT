@@ -274,3 +274,26 @@ class FbankPadding(nn.Module):
         elif l < 0:
             fbank = fbank[:, 0:self.target_length]
         return fbank
+    
+class RandomSpeed(nn.Module):
+    def __init__(self, start_fq:float, end_fq:float, sample_rate:int, max_length:int=-1, step:float=.01):
+        super().__init__()
+        self.speeds = nn.ModuleList()
+        fq = start_fq
+        while fq < end_fq:
+            self.speeds.append(torchaudio.transforms.Speed(orig_freq=sample_rate, factor=fq))
+            fq += step
+        self.max_length = max_length
+
+    def __random_speed__(self, wavform:torch.Tensor) -> torch.Tensor:
+        tf = self.speeds[np.random.randint(0, len(self.speeds))]
+        return tf(wavform)
+
+    def forward(self, wavform:torch.Tensor) -> torch.Tensor:
+        while True:
+            ret = self.__random_speed__(wavform=wavform)
+            if self.max_length == -1:
+                return ret
+            elif ret.shape[1] <= self.max_length:
+                return ret
+            else: continue
