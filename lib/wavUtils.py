@@ -276,24 +276,35 @@ class FbankPadding(nn.Module):
         return fbank
     
 class RandomSpeed(nn.Module):
-    def __init__(self, start_fq:float, end_fq:float, sample_rate:int, max_length:int=-1, step:float=.01):
+    def __init__(self, start_fq:float, end_fq:float, sample_rate:int, max_length:int=-1, step:float=.01, max_it:int=10):
         super().__init__()
         self.speeds = nn.ModuleList()
+        self.speed_up_ls = nn.ModuleList()
         fq = start_fq
         while fq < end_fq:
-            self.speeds.append(torchaudio.transforms.Speed(orig_freq=sample_rate, factor=fq))
+            item = torchaudio.transforms.Speed(orig_freq=sample_rate, factor=fq)
+            self.speeds.append(item)
+            if fq >= 1.0: self.speed_up_ls.append(item)
             fq += step
         self.max_length = max_length
+        self.max_it = max_it
 
     def __random_speed__(self, wavform:torch.Tensor) -> torch.Tensor:
-        tf = self.speeds[np.random.randint(0, len(self.speeds))]
+        if self.max_length != -1 and wavform.shape[1] >= self.max_length:
+            if len(self.speed_up_ls) == 0: return wavform
+            tf = self.speed_up_ls[np.random.randint(0, len(self.speed_up_ls))]
+        else:
+            tf = self.speeds[np.random.randint(0, len(self.speeds))]
         return tf(wavform)
 
     def forward(self, wavform:torch.Tensor) -> torch.Tensor:
+        it_num = 0
         while True:
             ret = self.__random_speed__(wavform=wavform)
-            if self.max_length == -1:
+            if self.max_length == -1 or ret.shape[1] <= self.max_length:
                 return ret
-            elif ret.shape[1] <= self.max_length:
-                return ret
-            else: continue
+            elif it_num >= self.max_it:
+                return wavform
+            else: 
+                it_num += 1
+                continue
