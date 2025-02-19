@@ -263,7 +263,7 @@ class SpeechCommandsV2(Dataset):
         'eight': 8., 'nine': 9., 'bed': 10., 'dog': 11., 'happy': 12., 'marvin': 13., 'off': 14., 
         'right': 15., 'up': 16., 'yes': 17., 'bird': 18., 'down': 19., 'house': 20., 'on': 21., 
         'stop': 22., 'tree': 23., 'cat': 24., 'go': 25., 'left': 26., 'no': 27., 'sheila': 28., 
-        'wow': 29., 'Backward': 30., 'Forward': 31., 'Follow': 32., 'Learn': 33., 'Visual': 34.
+        'wow': 29., 'backward': 30., 'forward': 31., 'follow': 32., 'learn': 33., 'visual': 34.
     }
     def __init__(
             self, root_path:str, folder_in_archive:str, mode:str=None, download:bool = True, 

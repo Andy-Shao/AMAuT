@@ -14,7 +14,7 @@ import torch.optim as optim
 
 from lib.toolkit import print_argparse, store_model_structure_to_txt, relative_path, count_ttl_params
 from lib.wavUtils import AudioPadding, Components, AmplitudeToDB, time_shift, MelSpectrogramPadding, FrequenceTokenTransformer, RandomPitchShift
-from lib.scDataset import SpeechCommandsDataset
+from lib.scDataset import SpeechCommandsDataset, SpeechCommandsV2
 from lib.datasets import dataset_tag
 from AuT.lib.model import AudioTransform, AudioClassifier, AudioDecoder
 from AuT.lib.loss import CrossEntropyLabelSmooth, CosineSimilarityLoss
@@ -106,18 +106,26 @@ def build_model(args:argparse.Namespace) -> tuple[AudioTransform, AudioClassifie
     return auTmodel, clsmodel, auDecoder
 
 def build_dataest(args:argparse.Namespace, tsf:nn.Module, mode:str) -> Dataset:
-    if args.dataset == 'speech-commands-random':
-        pass
-    else:
+    if args.dataset == 'speech-commands':
         dataset = SpeechCommandsDataset(
             root_path=args.dataset_root_path, mode=mode, include_rate=False, data_tfs=tsf,
             data_type=args.dataset_type
+        )
+    elif args.dataset == 'speech-commands_v2':
+        mode_dict = {
+            'train':'training',
+            'validation':'validation',
+            'test':'testing'
+        }
+        mode = mode_dict[mode]
+        dataset = SpeechCommandsV2(
+            root_path=args.dataset_root_path, mode=mode, data_tf=tsf, folder_in_archive='speech-commands_v2'
         )
     return dataset
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
-    ap.add_argument('--dataset', type=str, default='speech-commands', choices=['speech-commands'])
+    ap.add_argument('--dataset', type=str, default='speech-commands', choices=['speech-commands', 'speech-commands_v2'])
     ap.add_argument('--dataset_root_path', type=str)
     ap.add_argument('--num_workers', type=int, default=16)
     ap.add_argument('--output_path', type=str, default='./result')
@@ -143,6 +151,8 @@ if __name__ == '__main__':
     if args.dataset == 'speech-commands':
         args.class_num = 30
         args.dataset_type = 'all'
+    elif args.dataset == 'speech-commands_v2':
+        args.class_num = 35
     else:
         raise Exception('No support!')
     args.device = 'cuda' if torch.cuda.is_available() else 'cpu'

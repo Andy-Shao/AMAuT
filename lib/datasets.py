@@ -14,6 +14,8 @@ from torch import nn
 def dataset_tag(dataset_name:str) -> str:
     if dataset_name == 'speech-commands':
         return 'SC'
+    elif dataset_name == 'speech-commands_v2':
+        return 'SC2'
     elif dataset_name == 'AudioMNIST':
         return 'AM'
     else:
