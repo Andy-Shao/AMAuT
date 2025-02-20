@@ -8,12 +8,11 @@ from tqdm import tqdm
 import torch 
 from torchaudio import transforms as a_transforms
 from torch.utils.data import Dataset, DataLoader
-from ml_collections import ConfigDict
 import torch.nn as nn
 import torch.optim as optim
 
 from lib.toolkit import print_argparse, store_model_structure_to_txt, relative_path, count_ttl_params
-from lib.wavUtils import AudioPadding, Components, AmplitudeToDB, time_shift, MelSpectrogramPadding, FrequenceTokenTransformer, RandomPitchShift
+from lib.wavUtils import AudioPadding, Components, AmplitudeToDB, time_shift, MelSpectrogramPadding, FrequenceTokenTransformer
 from lib.scDataset import SpeechCommandsDataset, SpeechCommandsV2
 from lib.datasets import dataset_tag
 from AuT.lib.model import AudioTransform, AudioClassifier, AudioDecoder
@@ -175,7 +174,6 @@ if __name__ == '__main__':
         project='AC-PT (AuT)', name=f'{args.arch}-{dataset_tag(args.dataset)}', 
         mode='online' if args.wandb else 'disabled', config=args, tags=['Audio Classification', args.dataset, 'AuT'])
     
-    max_ms=1000
     sample_rate=16000
     args.n_mels=80
     n_fft=1024
@@ -184,7 +182,7 @@ if __name__ == '__main__':
     mel_scale='slaney'
     target_length=104
     tf_array = Components(transforms=[
-        AudioPadding(max_ms=max_ms, sample_rate=sample_rate, random_shift=True),
+        AudioPadding(max_length=sample_rate, sample_rate=sample_rate, random_shift=True),
         time_shift(shift_limit=.17, is_random=True, is_bidirection=True),
         a_transforms.MelSpectrogram(
             sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
@@ -201,7 +199,7 @@ if __name__ == '__main__':
     )
 
     tf_array = Components(transforms=[
-        AudioPadding(max_ms=max_ms, sample_rate=sample_rate, random_shift=False),
+        AudioPadding(max_length=sample_rate, sample_rate=sample_rate, random_shift=False),
         a_transforms.MelSpectrogram(
             sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
             mel_scale=mel_scale
