@@ -43,7 +43,6 @@ if __name__ == '__main__':
     if args.dataset == 'speech-commands':
         args.class_num = 30
         args.dataset_type = 'all'
-        args.max_ms=1000
         args.sample_rate=16000
     else:
         raise Exception('No support!')
@@ -56,7 +55,7 @@ if __name__ == '__main__':
     
     noise_type, noise = find_background_noise(args)
     audio_tsf = Components(transforms=[
-        AudioPadding(max_ms=args.max_ms, sample_rate=args.sample_rate, random_shift=True),
+        # AudioPadding(max_length=args.sample_rate, sample_rate=args.sample_rate, random_shift=True),
         BackgroundNoise(noise_level=args.severity_level, noise=noise, is_random=args.rand_bg)
     ])
     origin_dataset = build_dataest(args=args, tsf=audio_tsf, mode='test')

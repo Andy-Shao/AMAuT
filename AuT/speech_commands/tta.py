@@ -12,7 +12,7 @@ from torchaudio import transforms as a_transforms
 from torch.utils.data import DataLoader
 
 from lib.toolkit import print_argparse
-from lib.datasets import dataset_tag, TransferDataset, Dataset_Idx
+from lib.datasets import dataset_tag, TransferDataset, Dataset_Idx, load_from
 from lib.wavUtils import Components, MelSpectrogramPadding, AudioPadding, AmplitudeToDB, FrequenceTokenTransformer, time_shift
 from lib.wavUtils import RandomPitchShift, RandomSpeed
 from AuT.speech_commands.pre_train import build_dataest, build_model, lr_scheduler, includeAutoencoder, op_copy
@@ -24,7 +24,7 @@ def build_optimizer(args: argparse.Namespace, auT:nn.Module, auC:nn.Module, auD:
     param_group = []
     learning_rate = args.lr
     for k, v in auT.named_parameters():
-        param_group += [{'params':v, 'lr':learning_rate*.1}]
+        param_group += [{'params':v, 'lr':learning_rate}]
     for k, v in auC.named_parameters():
         param_group += [{'params':v, 'lr':learning_rate}]
     if includeAutoencoder(args):
@@ -59,6 +59,7 @@ if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument('--dataset', type=str, default='speech-commands', choices=['speech-commands', 'speech-commands_v2'])
     ap.add_argument('--dataset_root_path', type=str)
+    ap.add_argument('--corrupted_data_root_path', type=str)
     ap.add_argument('--num_workers', type=int, default=16)
     ap.add_argument('--output_path', type=str, default='./result')
 
@@ -99,6 +100,7 @@ if __name__ == '__main__':
         os.makedirs(args.full_output_path)
     except:
         pass
+    args.meta_file_name = 'speech_commands_meta.csv'
     torch.backends.cudnn.benchmark = True
 
     torch.manual_seed(args.seed)
@@ -120,7 +122,8 @@ if __name__ == '__main__':
     hop_length=155
     mel_scale='slaney'
     target_length=104
-    test_set = build_dataest(args=args, mode='test', tsf=None)
+    # test_set = build_dataest(args=args, mode='test', tsf=None)
+    test_set = load_from(root_path=args.corrupted_data_root_path, index_file_name=args.meta_file_name)
     test_loader = DataLoader(
         dataset=TransferDataset(
             dataset=test_set, 
@@ -180,6 +183,10 @@ if __name__ == '__main__':
         print('Adaptating...')
         auTmodel.train()
         clsmodel.train()
+        adatpting_time = len(weak_loader)
+        ttl_loss = 0.
+        ttl_fbnm_loss = 0.
+        ttl_cst_loss = 0.
         for weak_features, _, ids in tqdm(weak_loader):
             batch_size = weak_features.shape[0]
             weak_features = weak_features.to(args.device)
@@ -212,6 +219,9 @@ if __name__ == '__main__':
             loss = fbnm_loss + consistency_loss
             loss.backward()
             optimizer.step()
+            ttl_loss += loss
+            ttl_fbnm_loss += fbnm_loss.cpu().item()
+            ttl_cst_loss += consistency_loss.cpu().item()
 
         learning_rate = optimizer.param_groups[0]['lr']
         if epoch % args.interval == 0:
@@ -221,3 +231,9 @@ if __name__ == '__main__':
         accu, mean_all_output = inference(auT=auTmodel, auC=clsmodel, data_loader=test_loader, args=args)
         mean_all_output = torch.from_numpy(mean_all_output).to(args.device)
         print(f'Test accuracy: {accu:.2f}%, test set sample size is: {len(test_set)}')
+        wandb.log({
+            "LOSS/total loss":ttl_loss / adatpting_time,
+            "LOSS/consistency loss": ttl_cst_loss / adatpting_time,
+            "LOSS/Nuclear-norm Maximization loss":ttl_fbnm_loss / adatpting_time,
+            "Accuracy/classifier accuracy": accu
+        }, step=epoch, commit=True)
