@@ -109,7 +109,7 @@ if __name__ == '__main__':
     load_model(args=args, auT=auTmodel, auC=clsmodel, mode='original')
     accu = inference(auT=auTmodel, auC=clsmodel, data_loader=test_loader, args=args)
     accu_record.loc[len(accu_record)] = [args.dataset, args.arch, pd.NA, pd.NA, accu, 100.0-accu, 0., num_weight]
-    print(f'Original testing -- accuracy: {accu}%, sample size: {len(test_dataset)}')
+    print(f'Original testing -- accuracy: {accu:.2f}%, sample size: {len(test_dataset)}')
 
     print('Corruption')
     # corrupted_dataset = load_from(root_path=args.corrupted_data_root_path, index_file_name=args.meta_file_name, data_tf=tf_array)
@@ -117,7 +117,7 @@ if __name__ == '__main__':
     # load_model(args=args, auT=auTmodel, auC=clsmodel, mode='original')
     # accu = inference(auT=auTmodel, auC=clsmodel, data_loader=corrupted_loader, args=args)
     # accu_record.loc[len(accu_record)] = [args.dataset, args.arch, pd.NA, args.corruption, accu, 100.-accu, args.severity_level, num_weight]
-    # print(f'Corrupted testing -- accuracy: {accu}%, sample size: {len(corrupted_dataset)}')
+    # print(f'Corrupted testing -- accuracy: {accu:.2f}%, sample size: {len(corrupted_dataset)}')
 
     # Adaptation
     # TODO
