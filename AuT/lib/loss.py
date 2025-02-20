@@ -73,3 +73,10 @@ class CrossEntropyLabelSmooth(nn.Module):
             return loss.mean()
         else:
             return loss
+
+def soft_CE(softout: torch.Tensor, soft_label: torch.Tensor, epsilon = 1e-5) -> torch.Tensor:
+    """(Consist loss -> soft cross-entropy loss) uses this loss function"""
+    # epsilon = 1e-5
+    loss = -soft_label * torch.log(softout + epsilon)
+    total_loss = torch.sum(loss, dim=1)
+    return total_loss

@@ -209,7 +209,7 @@ class RandomPitchShift(nn.Module):
             PitchShift(
                 sample_rate=sample_rate, n_steps=item, bins_per_octave=bins_per_octave, n_fft=n_fft, 
                 win_length=win_length, hop_length=hop_length
-            ) for item in step_rang
+            ) if item != 0 else DoNothing() for item in step_rang
         ])
 
     def forward(self, x:torch.Tensor) -> torch.Tensor:

@@ -241,3 +241,15 @@ class FewShotDataset(Dataset):
     def __getitem__(self, index):
         index = self.data_index[index]
         return self.dataset[index]
+
+class Dataset_Idx(Dataset):
+    def __init__(self, dataset: Dataset) -> None:
+        super().__init__()
+        self.dataset = dataset
+
+    def __len__(self):
+        return len(self.dataset)
+    
+    def __getitem__(self, index) -> tuple[torch.Tensor, int, int]:
+        feature, label = self.dataset[index]
+        return feature, label, index

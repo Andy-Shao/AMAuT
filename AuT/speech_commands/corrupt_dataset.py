@@ -6,7 +6,7 @@ from torchaudio import transforms
 
 from lib.toolkit import print_argparse
 from lib.wavUtils import Components, BackgroundNoise, AudioPadding, time_shift
-from lib.scDataset import BackgroundNoiseDataset
+from lib.spDataset import BackgroundNoiseDataset
 from lib.datasets import load_from, TransferDataset
 from AuT.speech_commands.pre_train import build_dataest
 
