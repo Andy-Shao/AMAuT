@@ -180,14 +180,14 @@ class VisionTokenTransformer(nn.Module):
         return x
     
 class AudioPadding(nn.Module):
-    def __init__(self, max_ms:int, sample_rate:int, random_shift:bool=False):
+    def __init__(self, max_length:int, sample_rate:int, random_shift:bool=False):
         super(AudioPadding, self).__init__()
-        self.length = int(sample_rate * (max_ms / 1000))
+        self.max_length = max_length
         self.random_shift = random_shift
 
     def forward(self, x:torch.Tensor) -> torch.Tensor:
         from torch.nn.functional import pad
-        l = self.length - x.shape[1]
+        l = self.max_length - x.shape[1]
         if l > 0:
             if self.random_shift:
                 head = random.randint(0, l)
@@ -295,7 +295,8 @@ class RandomSpeed(nn.Module):
             tf = self.speed_up_ls[np.random.randint(0, len(self.speed_up_ls))]
         else:
             tf = self.speeds[np.random.randint(0, len(self.speeds))]
-        return tf(wavform)
+        new_wav, _ = tf(wavform)
+        return new_wav
 
     def forward(self, wavform:torch.Tensor) -> torch.Tensor:
         it_num = 0
