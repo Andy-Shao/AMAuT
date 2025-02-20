@@ -51,7 +51,7 @@ if __name__ == '__main__':
 
     ap.add_argument('--batch_size', type=int, default=64, help='batch size')
     ap.add_argument('--arch', type=str, default='CT', choices=['CT', 'CTA'])
-    ap.add_argument('--embed_size', type=int, default=768, choices=[768, 1024])
+    ap.add_argument('--arch_level', type=str, default='base')
 
     ap.add_argument('--original_auT_weight_path', type=str)
     ap.add_argument('--original_auC_weight_path', type=str)
@@ -80,7 +80,6 @@ if __name__ == '__main__':
     print_argparse(args)
     ################################################################
 
-    max_ms=1000
     sample_rate=16000
     args.n_mels=80
     n_fft=1024
@@ -89,7 +88,7 @@ if __name__ == '__main__':
     mel_scale='slaney'
     target_length=104
     tf_array = Components(transforms=[
-        AudioPadding(max_ms=max_ms, sample_rate=sample_rate, random_shift=False),
+        AudioPadding(max_length=sample_rate, sample_rate=sample_rate, random_shift=False),
         a_transforms.MelSpectrogram(
             sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
             mel_scale=mel_scale
@@ -113,12 +112,12 @@ if __name__ == '__main__':
     print(f'Original testing -- accuracy: {accu}%, sample size: {len(test_dataset)}')
 
     print('Corruption')
-    corrupted_dataset = load_from(root_path=args.corrupted_data_root_path, index_file_name=args.meta_file_name, data_tf=tf_array)
-    corrupted_loader = DataLoader(dataset=corrupted_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=args.num_workers)
-    load_model(args=args, auT=auTmodel, auC=clsmodel, mode='original')
-    accu = inference(auT=auTmodel, auC=clsmodel, data_loader=corrupted_loader, args=args)
-    accu_record.loc[len(accu_record)] = [args.dataset, args.arch, pd.NA, args.corruption, accu, 100.-accu, args.severity_level, num_weight]
-    print(f'Corrupted testing -- accuracy: {accu}%, sample size: {len(corrupted_dataset)}')
+    # corrupted_dataset = load_from(root_path=args.corrupted_data_root_path, index_file_name=args.meta_file_name, data_tf=tf_array)
+    # corrupted_loader = DataLoader(dataset=corrupted_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=args.num_workers)
+    # load_model(args=args, auT=auTmodel, auC=clsmodel, mode='original')
+    # accu = inference(auT=auTmodel, auC=clsmodel, data_loader=corrupted_loader, args=args)
+    # accu_record.loc[len(accu_record)] = [args.dataset, args.arch, pd.NA, args.corruption, accu, 100.-accu, args.severity_level, num_weight]
+    # print(f'Corrupted testing -- accuracy: {accu}%, sample size: {len(corrupted_dataset)}')
 
     # Adaptation
     # TODO

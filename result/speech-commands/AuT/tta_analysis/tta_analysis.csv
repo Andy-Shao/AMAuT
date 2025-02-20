@@ -1,3 +1,2 @@
 ,dataset,algorithm,tta-operation,corruption,accuracy,error,severity level,number of weight
-0,speech-commands,CT,,,95.8302852962692,4.169714703730804,0.0,96231868
-1,speech-commands,CT,,doing_the_dishes,77.16166788588149,22.838332114118515,3.0,96231868
+0,speech-commands,CT,,,95.71324067300658,4.286759326993419,0.0,96231868
