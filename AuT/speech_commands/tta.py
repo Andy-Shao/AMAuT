@@ -17,14 +17,15 @@ from lib.wavUtils import Components, MelSpectrogramPadding, AudioPadding, Amplit
 from lib.wavUtils import RandomPitchShift, RandomSpeed
 from AuT.speech_commands.pre_train import build_dataest, build_model, lr_scheduler, includeAutoencoder, op_copy
 from AuT.speech_commands.tta_analysis import load_model
-from AuT.lib.loss import soft_CE
+from AuT.lib.loss import soft_CE, SoftCrossEntropyLoss
 from AuT.lib.model import AudioTransform, AudioClassifier, AudioDecoder
+from AuT.lib.plr import plr
 
 def build_optimizer(args: argparse.Namespace, auT:nn.Module, auC:nn.Module, auD:AudioDecoder) -> optim.Optimizer:
     param_group = []
     learning_rate = args.lr
     for k, v in auT.named_parameters():
-        param_group += [{'params':v, 'lr':learning_rate}]
+        param_group += [{'params':v, 'lr':learning_rate*.1}]
     for k, v in auC.named_parameters():
         param_group += [{'params':v, 'lr':learning_rate}]
     if includeAutoencoder(args):
@@ -34,26 +35,68 @@ def build_optimizer(args: argparse.Namespace, auT:nn.Module, auC:nn.Module, auD:
     optimizer = op_copy(optimizer)
     return optimizer
 
-def inference(auT:AudioTransform, auC:AudioClassifier, data_loader:DataLoader, args:argparse.Namespace) -> tuple[float, np.ndarray]:
+def inference(auT:AudioTransform, auC:AudioClassifier, data_loader:DataLoader, args:argparse.Namespace):
+    from scipy.spatial.distance import cdist
     auT.eval()
     auC.eval()
     ttl_size = 0.
     ttl_corr = 0.
-    for idx, (features, labels) in tqdm(enumerate(data_loader), total=len(data_loader)):
-        features, labels = features.to(args.device), labels.to(args.device)
+    for idx, (inputs, labels) in tqdm(enumerate(data_loader), total=len(data_loader)):
+        inputs, labels = inputs.to(args.device), labels.to(args.device)
 
         with torch.no_grad():
-            outputs = auC(auT(features))
+            outputs, features = auC(auT(inputs))
             _, preds = torch.max(input=outputs.detach(), dim=1)
             if idx == 0:
                 all_output = outputs.float().cpu()
+                all_feature = features.float().cpu()
             else:
                 all_output = torch.cat([all_output, outputs.float().cpu()], dim=0)
+                all_feature = torch.cat([all_feature, features.float().cpu()], dim=0)
         ttl_corr += (preds == labels).sum().cpu().item()
         ttl_size += labels.shape[0]
     all_output = nn.Softmax(dim=1)(all_output)
+    mean_all_output = torch.mean(all_output, dim=0).numpy()
+    _, predict = torch.max(all_output, dim=1)
 
-    return ttl_corr / ttl_size * 100.0, torch.mean(all_output, dim=0).numpy()
+    # find centroid per class
+    if args.distance == 'cosine': 
+        ######### Not Clear (looks like feature normalization though)#######
+        all_feature = torch.cat((all_feature, torch.ones(all_feature.size(0), 1)), dim=1)
+        all_feature = (all_feature.t() / torch.norm(all_feature, p=2, dim=1)).t() # here is L2 norm
+    ### all_fea: extractor feature [bs,N]. all_feature is g_t in paper
+    all_feature = all_feature.float().cpu().numpy()
+    K = all_output.size(1) # number of classes
+    aff = all_output.float().cpu().numpy() ### aff: softmax output [bs,c]
+
+    # got the initial normalized centroid (k*(d+1))
+    initc = aff.transpose().dot(all_feature)
+    initc = initc / (1e-8 + aff.sum(axis=0)[:, None])
+
+    cls_count = np.eye(K)[predict].sum(axis=0) # total number of prediction per class
+    labelset = np.where(cls_count >= args.threshold) ### index of classes for which same sampeled have been detected # returns tuple
+    labelset = labelset[0] # index of classes for which samples per class greater than threshold
+    # labelset == [0, 1, 2, ..., 29]
+
+    # dd is the data distance between data and central point.
+    # dd = dict(all_feature, initc[labelset], args.distance)
+    dd = all_feature @ initc[labelset].T # <g_t, initc>
+    dd = np.exp(dd) # amplify difference
+    pred_label = dd.argmax(axis=1) # predicted class based on the minimum distance
+    pred_label = labelset[pred_label] # this will be the actual class
+
+    for round in range(args.initc_num): # calculate initc and pseduo label multi-times
+        aff = np.eye(K)[pred_label]
+        initc = aff.transpose().dot(all_feature)
+        initc = initc / (1e-8 + aff.sum(axis=0)[:, None])
+        # dd = dict(all_feature, initc[labelset], args.distance)
+        dd = all_feature @ initc[labelset].T
+        dd = np.exp(dd)
+        pred_label = dd.argmax(axis=1)
+        pred_label = labelset[pred_label]
+    dd = nn.functional.softmax(torch.from_numpy(dd), dim=1)
+
+    return pred_label, all_output.cpu().numpy(), dd.numpy().astype(np.float32), mean_all_output, ttl_corr / ttl_size * 100.0
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
@@ -81,8 +124,11 @@ if __name__ == '__main__':
     ap.add_argument('--original_auT_weight_path', type=str)
     ap.add_argument('--original_auC_weight_path', type=str)
 
-    ap.add_argument('--const_par', type=float, default=0.2, help='lambda 3')
     ap.add_argument('--fbnm_par', type=float, default=4.0, help='lambda 1')
+    ap.add_argument('--cls_par', type=float, default=0.2, help='lambda 2 | Pseudo-label loss capable')
+    ap.add_argument('--const_par', type=float, default=0.2, help='lambda 3')
+
+    ap.add_argument('--distance', type=str, default='cosine', choices=["euclidean", "cosine"])
 
     args = ap.parse_args()
     if args.dataset == 'speech-commands':
@@ -174,9 +220,17 @@ if __name__ == '__main__':
 
     max_accu = 0.
     print('Pre-inferencing...')
-    accu, mean_all_output = inference(auT=auTmodel, auC=clsmodel, data_loader=test_loader, args=args)
-    mean_all_output = torch.from_numpy(mean_all_output).to(args.device)
+    mem_label, soft_output, dd, mean_all_output, accu = inference(auT=auTmodel, auC=clsmodel, data_loader=test_loader, args=args)
     print(f'Test accuracy: {accu:.2f}%, test set sample size is: {len(test_set)}')
+    if args.plr:
+        prev_mem_label = mem_label
+        mem_label = dd
+    else:
+        mem_label = dd
+
+    mem_label = torch.from_numpy(mem_label).to(args.device)
+    dd = torch.from_numpy(dd).to(args.device)
+    mean_all_output = torch.from_numpy(mean_all_output).to(args.device)
     for epoch in range(args.max_epoch):
         print(f"Epoch {epoch+1}/{args.max_epoch}")
 
@@ -195,6 +249,24 @@ if __name__ == '__main__':
 
             optimizer.zero_grad()
             outputs = clsmodel(auTmodel(features))
+
+            # Pseudo-label cross-entropy loss
+            if args.cls_par > 0:
+                with torch.no_grad():
+                    pred = mem_label[ids]
+                if args.cls_mode == 'logsoft_ce':
+                    classifier_loss = SoftCrossEntropyLoss(outputs[0:batch_size], pred)
+                    classifier_loss = torch.mean(classifier_loss)
+                elif args.cls_mode == 'soft_ce':
+                    softmax_output = nn.Softmax(dim=1)(outputs[0:batch_size])
+                    classifier_loss = nn.CrossEntropyLoss()(softmax_output, pred)
+                elif args.cls_mode == 'logsoft_nll':
+                    softmax_output = nn.LogSoftmax(dim=1)(outputs[0:batch_size])
+                    _, pred = torch.max(pred, dim=1)
+                    classifier_loss = nn.NLLLoss(reduction='mean')(softmax_output, pred)
+                classifier_loss = args.cls_par * classifier_loss
+            else:
+                classifier_loss = torch.tensor(.0).cuda()
 
             # fbnm -> Nuclear-norm Maximization loss
             if args.fbnm_par > 0:
@@ -216,7 +288,7 @@ if __name__ == '__main__':
             else:
                 consistency_loss = torch.tensor(.0).cuda()
 
-            loss = fbnm_loss + consistency_loss
+            loss = classifier_loss + fbnm_loss + consistency_loss
             loss.backward()
             optimizer.step()
             ttl_loss += loss
@@ -228,8 +300,15 @@ if __name__ == '__main__':
             lr_scheduler(optimizer=optimizer, epoch=epoch, lr_cardinality=args.lr_cardinality)
 
         print('Inferencing...')
-        accu, mean_all_output = inference(auT=auTmodel, auC=clsmodel, data_loader=test_loader, args=args)
+        mem_label, soft_output, dd, mean_all_output, accu = inference(auT=auTmodel, auC=clsmodel, data_loader=test_loader, args=args)
+        if args.plr:
+            mem_label = plr(prev_mem_label, mem_label, dd, args.class_num, alpha = args.alpha)
+            prev_mem_label = mem_label.argmax(axis=1).astype(int)
+        else:
+            mem_label = dd
         mean_all_output = torch.from_numpy(mean_all_output).to(args.device)
+        mem_label = torch.from_numpy(mem_label).to(args.device)
+        dd = torch.from_numpy(dd).to(args.device)
         print(f'Test accuracy: {accu:.2f}%, test set sample size is: {len(test_set)}')
         wandb.log({
             "LOSS/total loss":ttl_loss / adatpting_time,

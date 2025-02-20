@@ -52,10 +52,10 @@ class AudioClassifier(nn.Module):
         x = x.contiguous().view(batch_size, token_len)
 
         x = self.fc1(x)
-        x = self.bn2(self.fc2(x))
-        x = self.fc3(x)
+        features = self.bn2(self.fc2(x))
+        outputs = self.fc3(features)
 
-        return x
+        return outputs, features
 
 class AudioTransform(nn.Module):
     def __init__(self, config:ConfigDict) -> None:

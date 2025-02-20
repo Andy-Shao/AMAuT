@@ -248,11 +248,11 @@ if __name__ == '__main__':
             optimizer.zero_grad()
             if includeAutoencoder(args):
                 attens, hidden_attens = auTmodel(features)
-                outputs = clsmodel(attens)
+                outputs, _ = clsmodel(attens)
                 gen_fts = auDecoder(attens, hidden_attens)
                 loss = loss_fn(outputs, labels) + args.lr_dec * decoder_loss_fn(gen_fts, org_fts)
             else:
-                outputs = clsmodel(auTmodel(features))
+                outputs, _ = clsmodel(auTmodel(features))
                 loss = loss_fn(outputs, labels)
             loss.backward()
             optimizer.step()
@@ -280,7 +280,7 @@ if __name__ == '__main__':
                     attens, _ = auTmodel(features)
                 else:
                     attens = auTmodel(features)
-                outputs = clsmodel(attens)
+                outputs, _ = clsmodel(attens)
                 _, preds = torch.max(outputs.detach(), dim=1)
             ttl_val_size += labels.shape[0]
             ttl_val_corr += (preds == labels).sum().cpu().item()
