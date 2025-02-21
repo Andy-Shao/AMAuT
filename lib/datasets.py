@@ -187,16 +187,24 @@ class TwoTFDataset(Dataset):
         return x1, x2, label
     
 class FewShotDataset(Dataset):
-    def __init__(self, dataset:Dataset, output_path: str, mode:str, seed = 2025, fs_num = 10):
+    def __init__(
+            self, dataset:Dataset, output_path: str, mode:str, seed = 2025, fs_num = 10,
+            fs_file_name='test-fewshot.txt', res_file_name='test-residual.txt'
+        ):
         super(FewShotDataset, self).__init__()
         assert mode in ['fewshot', 'residual'], 'No support'
         self.mode = mode
         self.dataset = dataset
+        self.output_path = output_path
+        self.fs_file_name = fs_file_name
+        self.res_file_name = res_file_name
+        self.seed = seed
+        self.fs_num = fs_num
         self.__split_test__()
 
-    def __split_test__(self, fs_file_name='test-fewshot.txt', res_file_name='test-residual.txt'):
-        full_fs_name = os.path.join(self.output_path, fs_file_name)
-        full_res_name = os.path.join(self.output_path, res_file_name)
+    def __split_test__(self):
+        full_fs_name = os.path.join(self.output_path, self.fs_file_name)
+        full_res_name = os.path.join(self.output_path, self.res_file_name)
         if os.path.exists(full_fs_name):
             if self.mode == 'fewshot':
                 with open(full_fs_name, mode='tr', newline='\n') as f:
@@ -240,7 +248,7 @@ class FewShotDataset(Dataset):
     
     def __getitem__(self, index):
         index = self.data_index[index]
-        return self.dataset[index]
+        return self.dataset[int(index)]
 
 class Dataset_Idx(Dataset):
     def __init__(self, dataset: Dataset) -> None:
