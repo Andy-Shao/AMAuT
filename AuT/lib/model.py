@@ -65,7 +65,7 @@ class AudioTransform(nn.Module):
         self.embedding = RestEmbedding(
             num_channels=config.embedding['channel_num'], embed_size=embed_size,
             marsked_rate=config.embedding['marsked_rate'], in_shape=config.embedding['in_shape'],
-            arch=self.arch
+            arch=self.arch, num_layers=config.embedding['num_layers']
         )
         self.tf_norm = nn.LayerNorm(embed_size, eps=1e-6)
         self.layers = nn.ModuleList([AttentionBlock(config) for _ in range(config.transform['layer_num'])])

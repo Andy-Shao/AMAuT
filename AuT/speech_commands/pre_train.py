@@ -93,6 +93,7 @@ def build_model(args:argparse.Namespace) -> tuple[AudioTransform, AudioClassifie
     if args.arch_level == 'base':
         config = CT_base(class_num=args.class_num, n_mels=args.n_mels)
         config.embedding.in_shape = [args.n_mels, 104]
+        config.embedding.arch = args.arch
         auTmodel = AudioTransform(config=config).to(device=args.device)
         clsmodel = AudioClassifier(config=config).to(device=args.device)
 
@@ -128,8 +129,6 @@ if __name__ == '__main__':
     ap.add_argument('--dataset_root_path', type=str)
     ap.add_argument('--num_workers', type=int, default=16)
     ap.add_argument('--output_path', type=str, default='./result')
-    ap.add_argument('--output_csv_name', type=str, default='training_records.csv')
-    ap.add_argument('--output_weight_prefix', type=str, default='speech-commands')
 
     ap.add_argument('--wandb', action='store_true')
     ap.add_argument('--seed', type=int, default=2025, help='random seed')
@@ -214,10 +213,10 @@ if __name__ == '__main__':
     )
 
     auTmodel, clsmodel, auDecoder = build_model(args=args)
-    store_model_structure_to_txt(model=auTmodel, output_path=relative_path(args, 'auTmodel.txt'))
-    store_model_structure_to_txt(model=clsmodel, output_path=relative_path(args, 'clsmodel.txt'))
+    store_model_structure_to_txt(model=auTmodel, output_path=relative_path(args, f'{args.arch}-{dataset_tag(args.dataset)}-auT.txt'))
+    store_model_structure_to_txt(model=clsmodel, output_path=relative_path(args, f'{args.arch}-{dataset_tag(args.dataset)}-cls.txt'))
     if includeAutoencoder(args):
-        store_model_structure_to_txt(model=auDecoder, output_path=relative_path(args, 'auDecoder.txt'))
+        store_model_structure_to_txt(model=auDecoder, output_path=relative_path(args, f'{args.arch}-{dataset_tag(args.dataset)}-auD.txt'))
     print_weight_num(auT=auTmodel, auC=clsmodel, auD=auDecoder, args=args)
     loss_fn = CrossEntropyLabelSmooth(num_classes=args.class_num, use_gpu=torch.cuda.is_available(), epsilon=args.smooth)
     decoder_loss_fn = nn.MSELoss(reduction='mean').to(device=args.device)
@@ -288,8 +287,10 @@ if __name__ == '__main__':
         print(f'Validation size:{ttl_val_size:.0f}, accuracy:{ttl_val_accu:.2f}%')
         if max_val_accu <= ttl_val_accu:
             max_val_accu = ttl_val_accu
-            torch.save(auTmodel.state_dict(), relative_path(args, 'AuT.pt'))
-            torch.save(clsmodel.state_dict(), relative_path(args, 'AuT-Cls.pt'))
+            torch.save(auTmodel.state_dict(), relative_path(args, f'{args.arch}-{dataset_tag(args.dataset)}-auT.pt'))
+            torch.save(clsmodel.state_dict(), relative_path(args, f'{args.arch}-{dataset_tag(args.dataset)}-cls.pt'))
+            if includeAutoencoder(args):
+                torch.save(auDecoder.state_dict(), relative_path(args, f'{args.arch}-{dataset_tag(args.dataset)}-auD.pt'))
 
         wandb.log({
             'Train/Accu': ttl_train_corr/ttl_train_size * 100.,

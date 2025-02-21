@@ -86,3 +86,9 @@ def SoftCrossEntropyLoss(logit: torch.Tensor, soft_pseudo_label: torch.Tensor) -
     percentage = F.log_softmax(logit, dim=1)
     # print(f'left shape: {soft_pseudo_label.shape}, right shape: {percentage.shape}')
     return -(soft_pseudo_label * percentage).sum(dim=1)
+
+def Entropy(input_: torch.Tensor, epsilon= 1e-5):
+    # epsilon = 1e-5
+    entropy = -input_ * torch.log(input_ + epsilon)
+    entropy = torch.sum(entropy, dim=1)
+    return entropy

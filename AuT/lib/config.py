@@ -43,5 +43,6 @@ def CT_base(class_num:int, n_mels:int) -> ConfigDict:
     cfg.embedding.embed_size = 768
     cfg.embedding.in_shape = [80, 104]
     cfg.embedding.arch = 'CT'
+    cfg.embedding.num_layers = [6, 8]
 
     return cfg
