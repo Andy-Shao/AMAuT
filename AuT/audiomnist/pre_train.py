@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 from lib.toolkit import print_argparse, relative_path, store_model_structure_to_txt
 from lib.wavUtils import Components, AudioPadding, AmplitudeToDB, time_shift, MelSpectrogramPadding, FrequenceTokenTransformer
 from lib.datasets import dataset_tag
-from lib.spDataset import FilterAudioMNIST
+from lib.spDataset import FilterAudioMNIST, AudioMINST
 from AuT.lib.model import AudioTransform, AudioClassifier
 from AuT.speech_commands.pre_train import lr_scheduler, build_optimizer
 from AuT.lib.loss import CrossEntropyLabelSmooth
@@ -94,7 +94,10 @@ if __name__ == '__main__':
         MelSpectrogramPadding(target_length=args.target_length),
         FrequenceTokenTransformer()
     ])
-    train_dataset = FilterAudioMNIST(root_path=args.dataset_root_path, data_tsf=tf_array, include_rate=False, filter_fn=lambda x: x['accent'] == 'German')
+    train_list = AudioMINST.default_splits(mode='train', fold=0, root_path=args.dataset_root_path)
+    train_list += AudioMINST.default_splits(mode='validate', fold=0, root_path=args.dataset_root_path)
+    train_dataset = AudioMINST(data_paths=train_list, data_trainsforms=tf_array, include_rate=False)
+    # train_dataset = FilterAudioMNIST(root_path=args.dataset_root_path, data_tsf=tf_array, include_rate=False, filter_fn=lambda x: x['accent'] == 'German')
     train_loader = DataLoader(dataset=train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=False, num_workers=args.num_workers)
 
     tf_array = Components(transforms=[
@@ -107,8 +110,9 @@ if __name__ == '__main__':
         MelSpectrogramPadding(target_length=args.target_length),
         FrequenceTokenTransformer()
     ])
-    val_dataset = FilterAudioMNIST(root_path=args.dataset_root_path, data_tsf=tf_array, include_rate=False, filter_fn=lambda x: x['accent'] != 'German')
-    # val_dataset = ClipDataset(dataset=train_dataset, rate=.3)
+    val_list = AudioMINST.default_splits(mode='test', fold=0, root_path=args.dataset_root_path)
+    val_dataset = AudioMINST(data_paths=val_list, data_trainsforms=tf_array, include_rate=False)
+    # val_dataset = FilterAudioMNIST(root_path=args.dataset_root_path, data_tsf=tf_array, include_rate=False, filter_fn=lambda x: x['accent'] != 'German')
     val_loader = DataLoader(dataset=val_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=args.num_workers)
 
     auTmodel, clsmodel = build_model(args)

@@ -388,8 +388,8 @@ class AudioMINST(Dataset):
 
         dataset_list = []
         for it in target_split:
-            data_path = os.path.join(root_path, it)
-            for wav in os.listdir(data_path):
-                if it.endswith('wav'):
-                    dataset_list.append(os.path.join(data_path, wav))
+            data_path = os.path.join(root_path, f'{it}' if it > 9 else f'0{it}')
+            for f in os.listdir(data_path):
+                if f.endswith('wav'):
+                    dataset_list.append(os.path.join(data_path, f))
         return dataset_list
