@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader
 
 from lib.toolkit import print_argparse, relative_path, store_model_structure_to_txt
 from lib.wavUtils import Components, AudioPadding, AmplitudeToDB, time_shift, MelSpectrogramPadding, FrequenceTokenTransformer
-from lib.datasets import dataset_tag
+from lib.datasets import dataset_tag, ClipDataset
 from lib.spDataset import FilterAudioMNIST, AudioMINST
 from AuT.lib.model import AudioTransform, AudioClassifier
 from AuT.speech_commands.pre_train import lr_scheduler, build_optimizer
@@ -53,6 +53,8 @@ if __name__ == '__main__':
 
     args = ap.parse_args()
     if args.dataset == 'AudioMNIST':
+        args.class_num = 10
+    elif args.dataset == 'AudioMNIST2':
         args.class_num = 10
     else:
         raise Exception('No support!')
@@ -116,7 +118,7 @@ if __name__ == '__main__':
         val_list = AudioMINST.default_splits(mode='validate', fold=0, root_path=args.dataset_root_path)
         val_dataset = AudioMINST(data_paths=val_list, data_trainsforms=tf_array, include_rate=False)
     elif args.dataset == 'AudioMNIST2':
-        val_dataset = FilterAudioMNIST(root_path=args.dataset_root_path, data_tsf=tf_array, include_rate=False, filter_fn=lambda x: x['accent'] != 'German')
+        val_dataset = ClipDataset(dataset=train_dataset, rate=.3)
     val_loader = DataLoader(dataset=val_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=args.num_workers)
 
     auTmodel, clsmodel = build_model(args)
