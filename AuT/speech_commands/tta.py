@@ -12,30 +12,83 @@ from torchaudio import transforms as a_transforms
 from torch.utils.data import DataLoader
 
 from lib.toolkit import print_argparse
-from lib.datasets import dataset_tag
+from lib.datasets import dataset_tag, Dataset_Idx
 from lib.wavUtils import Components, AudioPadding, AmplitudeToDB, MelSpectrogramPadding, FrequenceTokenTransformer
 from AuT.speech_commands.pre_train import build_dataest, build_model, includeAutoencoder, op_copy, lr_scheduler
 from AuT.lib.model import AudioClassifier, AudioDecoder, AudioTransform
+from AuT.lib.plr import plr
+from AuT.lib.loss import SoftCrossEntropyLoss
 
 def inference(auT:AudioTransform, auC:AudioClassifier, data_loader:DataLoader, args:argparse.Namespace) -> float:
+    import torch.nn.functional as F
     auT.eval()
     auC.eval()
     ttl_size = 0.
     ttl_corr = 0.
-    for features, labels in tqdm(data_loader):
-        features, labels = features.to(args.device), labels.to(args.device)
-
-        with torch.no_grad():
-            if includeAutoencoder(args):
-                attens, _ = auT(features)
-            else: 
-                attens = auT(features)
-            outputs, _ = auC(attens)
+    with torch.no_grad():
+        for idx, (inputs, labels) in tqdm(enumerate(data_loader), total=len(data_loader)):
+            inputs = inputs.to(args.device)
+            labels = labels.to(args.device)
+            outputs, features = auC(auT(inputs))
             _, preds = torch.max(input=outputs.detach(), dim=1)
-        ttl_corr += (preds == labels).sum().cpu().item()
-        ttl_size += labels.shape[0]
+            ttl_corr += (preds == labels).sum().cpu().item()
+            ttl_size += labels.shape[0]
+            if idx == 0:
+                all_feature = features.float().cpu()
+                all_output = outputs.float().cpu()
+                all_label = labels.float().cpu()
+            else:
+                all_feature = torch.cat([all_feature, features.float().cpu()], dim=0)
+                all_output = torch.cat([all_output, outputs.float().cpu()], dim=0)
+                all_label = torch.cat([all_label, labels.float().cpu()], dim=0)
+        inputs = None
+        features = None
+        outputs = None
+        preds = None
+    ############################### inference ################################
 
-    return ttl_corr / ttl_size * 100.0
+    # all_output = nn.Softmax(dim=1)(all_output)
+    all_output = F.softmax(all_output, dim=1)
+    mean_all_output = torch.mean(all_output, dim=0).numpy()
+    _, predict = torch.max(all_output, dim=1)
+
+    # find centroid per class
+    if args.distance == 'cosine':
+        ######### Not Clear (looks like feature normalization though)#######
+        all_feature = torch.cat((all_feature, torch.ones(all_feature.size(0), 1)), dim=1)
+        all_feature = (all_feature.t() / torch.norm(all_feature, p=2, dim=1)).t() # here is L2 norm
+    ### all_fea: extractor feature [bs,N]. all_feature is g_t in paper
+    all_feature = all_feature.float().cpu().numpy()
+    K = all_output.size(1) # number of classes
+    aff = all_output.float().cpu().numpy() ### aff: softmax output [bs,c]
+
+    # got the initial normalized centroid (k*(d+1))
+    initc = aff.transpose().dot(all_feature)
+    initc = initc / (1e-8 + aff.sum(axis=0)[:, None])
+
+    cls_count = np.eye(K)[predict].sum(axis=0) # total number of prediction per class
+    labelset = np.where(cls_count >= args.threshold) ### index of classes for which same sampeled have been detected # returns tuple
+    labelset = labelset[0] # index of classes for which samples per class greater than threshold
+
+    dd = all_feature @ initc[labelset].T # <g_t, initc>
+    dd = np.exp(dd) # amplify difference
+    pred_label = dd.argmax(axis=1) # predicted class based on the minimum distance
+    pred_label = labelset[pred_label] # this will be the actual class
+
+    for round in range(1): # calculate initc and pseduo label multi-times
+        aff = np.eye(K)[pred_label]
+        initc = aff.transpose().dot(all_feature)
+        initc = initc / (1e-8 + aff.sum(axis=0)[:, None])
+        dd = all_feature @ initc[labelset].T
+        dd = np.exp(dd)
+        pred_label = dd.argmax(axis=1)
+        pred_label = labelset[pred_label]
+
+    # pseduo-label accuracy
+    pl_acc = np.sum(pred_label == all_label.float().numpy()) / len(all_feature) * 100.
+
+    dd = F.softmax(torch.from_numpy(dd), dim=1)
+    return pred_label, all_output.cpu().numpy(), dd.numpy().astype(np.float32), mean_all_output, ttl_corr / ttl_size * 100.0, pl_acc
 
 def load_model(args:argparse.Namespace, auT:AudioTransform, auD:AudioDecoder, auC:AudioClassifier):
     auT.load_state_dict(state_dict=torch.load(args.original_auT_weight_path))
@@ -47,7 +100,7 @@ def build_optimizer(args: argparse.Namespace, auT:AudioTransform, auC:AudioClass
     param_group = []
     learning_rate = args.lr
     for k, v in auT.named_parameters():
-        param_group += [{'params':v, 'lr':learning_rate}]
+        param_group += [{'params':v, 'lr':learning_rate*.1}]
     for k, v in auC.named_parameters():
         param_group += [{'params':v, 'lr':learning_rate}]
     if includeAutoencoder(args):
@@ -82,6 +135,13 @@ if __name__ == '__main__':
     ap.add_argument('--original_auT_weight_path', type=str)
     ap.add_argument('--original_auC_weight_path', type=str)
     ap.add_argument('--original_auD_weight_path', type=str)
+
+    ap.add_argument('--distance', type=str, default='cosine', choices=["euclidean", "cosine"])
+    ap.add_argument('--threshold', type=int, default=0)
+    ap.add_argument('--plr', help='Pseudo-label refinement', action='store_true')
+    ap.add_argument('--alpha', type=float, default=0.9)
+    ap.add_argument('--cls_par', type=float, default=1.0, help='lambda 2 | Pseudo-label loss capable')
+    ap.add_argument('--cls_mode', type=str, default='soft_ce', choices=['logsoft_ce', 'soft_ce', 'logsoft_nll'])
 
     args = ap.parse_args()
     if args.dataset == 'speech-commands':
@@ -133,32 +193,71 @@ if __name__ == '__main__':
         dataset=test_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=args.num_workers
     )
 
+    weak_dataset = Dataset_Idx(dataset=test_dataset)
+    weak_loader = DataLoader(
+        dataset=weak_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=args.num_workers
+    )
+
     auTmodel, clsmodel, auDecoder = build_model(args=args)
     load_model(args=args, auT=auTmodel, auC=clsmodel, auD=auDecoder)
     decoder_loss_fn = nn.MSELoss(reduction='mean').to(device=args.device)
     optimizer = build_optimizer(args=args, auT=auTmodel, auC=clsmodel, auD=auDecoder)
 
+    print('Pre-predicating...')
+    mem_label, soft_output, dd, mean_all_output, accu, pl_acc = inference(auT=auTmodel, auC=clsmodel, data_loader=test_loader, args=args)
+    if args.plr:
+        prev_mem_label = mem_label
+        mem_label = dd
+    else:
+        mem_label = dd
+    mem_label = torch.from_numpy(mem_label).to(args.device)
+    dd = torch.from_numpy(dd).to(args.device)
+    mean_all_output = torch.from_numpy(mean_all_output).to(args.device)
+    print(f'accuracy is: {accu:.2f}%, sample size is: {len(test_dataset)}, pseudo-label accuracy is: {pl_acc:.2f}%')
     for epoch in range(args.max_epoch):
         print(f"Epoch {epoch+1}/{args.max_epoch}")
-
         auTmodel.train()
         clsmodel.train()
-        if includeAutoencoder(args): auDecoder.train()
-        for inputs, _ in tqdm(test_loader):
+
+        for inputs, _, idxes in tqdm(weak_loader):
             inputs = inputs.to(args.device)
-            org_inputs = torch.clone(inputs).detach().to(args.device)
-
+            batch_size = inputs.shape[0]
             optimizer.zero_grad()
-            attens, hidden_attens = auTmodel(inputs)
-            outputs, features = clsmodel(attens)
-            gen_fts = auDecoder(attens, hidden_attens)
+            outputs, _ = clsmodel(auTmodel(inputs))
 
-            loss = decoder_loss_fn(gen_fts, org_inputs)
+            # Pseudo-label cross-entropy loss
+            if args.cls_par > 0:
+                with torch.no_grad():
+                    pred = mem_label[idxes]
+                    pred = pred.detach()
+                if args.cls_mode == 'logsoft_ce':
+                    classifier_loss = SoftCrossEntropyLoss(outputs[0:batch_size], pred)
+                    classifier_loss = torch.mean(classifier_loss)
+                elif args.cls_mode == 'soft_ce':
+                    softmax_output = nn.Softmax(dim=1)(outputs[0:batch_size])
+                    classifier_loss = nn.CrossEntropyLoss()(softmax_output, pred)
+                elif args.cls_mode == 'logsoft_nll':
+                    softmax_output = nn.LogSoftmax(dim=1)(outputs[0:batch_size])
+                    _, pred = torch.max(pred, dim=1)
+                    classifier_loss = nn.NLLLoss(reduction='mean')(softmax_output, pred)
+                classifier_loss = args.cls_par*classifier_loss
+            else:
+                classifier_loss = torch.tensor(.0).cuda()
+
+            loss = classifier_loss
             loss.backward()
             optimizer.step()
 
         if epoch % args.interval == 0:
             lr_scheduler(optimizer=optimizer, epoch=epoch, lr_cardinality=args.lr_cardinality)
-
-        accu = inference(auT=auTmodel, auC=clsmodel, data_loader=test_loader, args=args)
-        print(f'accuracy is: {accu:.2f}%, sample size is: {len(test_dataset)}')
+                
+        mem_label, soft_output, dd, mean_all_output, accu, pl_acc = inference(auT=auTmodel, auC=clsmodel, data_loader=test_loader, args=args)
+        if args.plr:
+            mem_label = plr(prev_mem_label, mem_label, dd, args.class_num, alpha = args.alpha)
+            prev_mem_label = mem_label.argmax(axis=1).astype(int)
+        else:
+            mem_label = dd
+        mem_label = torch.from_numpy(mem_label).to(args.device)
+        dd = torch.from_numpy(dd).to(args.device)
+        mean_all_output = torch.from_numpy(mean_all_output).to(args.device)
+        print(f'accuracy is: {accu:.2f}%, sample size is: {len(test_dataset)}, pseudo-label accuracy is: {pl_acc:.2f}%')
