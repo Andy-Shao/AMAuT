@@ -29,7 +29,7 @@ def build_model(args:argparse.Namespace) -> tuple[AudioTransform, AudioClassifie
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
-    ap.add_argument('--dataset', type=str, default='AudioMNIST', choices=['AudioMNIST'])
+    ap.add_argument('--dataset', type=str, default='AudioMNIST', choices=['AudioMNIST', 'AudioMNIST2'])
     ap.add_argument('--dataset_root_path', type=str)
     ap.add_argument('--num_workers', type=int, default=16)
     ap.add_argument('--output_path', type=str, default='./result')
@@ -94,10 +94,12 @@ if __name__ == '__main__':
         MelSpectrogramPadding(target_length=args.target_length),
         FrequenceTokenTransformer()
     ])
-    train_list = AudioMINST.default_splits(mode='train', fold=0, root_path=args.dataset_root_path)
-    train_list += AudioMINST.default_splits(mode='validate', fold=0, root_path=args.dataset_root_path)
-    train_dataset = AudioMINST(data_paths=train_list, data_trainsforms=tf_array, include_rate=False)
-    # train_dataset = FilterAudioMNIST(root_path=args.dataset_root_path, data_tsf=tf_array, include_rate=False, filter_fn=lambda x: x['accent'] == 'German')
+    if args.dataset == 'AudioMNIST':
+        train_list = AudioMINST.default_splits(mode='train', fold=0, root_path=args.dataset_root_path)
+        train_list += AudioMINST.default_splits(mode='validate', fold=0, root_path=args.dataset_root_path)
+        train_dataset = AudioMINST(data_paths=train_list, data_trainsforms=tf_array, include_rate=False)
+    elif args.dataset == 'AudioMNIST2':
+        train_dataset = FilterAudioMNIST(root_path=args.dataset_root_path, data_tsf=tf_array, include_rate=False, filter_fn=lambda x: x['accent'] == 'German')
     train_loader = DataLoader(dataset=train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=False, num_workers=args.num_workers)
 
     tf_array = Components(transforms=[
@@ -110,9 +112,11 @@ if __name__ == '__main__':
         MelSpectrogramPadding(target_length=args.target_length),
         FrequenceTokenTransformer()
     ])
-    val_list = AudioMINST.default_splits(mode='test', fold=0, root_path=args.dataset_root_path)
-    val_dataset = AudioMINST(data_paths=val_list, data_trainsforms=tf_array, include_rate=False)
-    # val_dataset = FilterAudioMNIST(root_path=args.dataset_root_path, data_tsf=tf_array, include_rate=False, filter_fn=lambda x: x['accent'] != 'German')
+    if args.dataset == 'AudioMNIST':
+        val_list = AudioMINST.default_splits(mode='validate', fold=0, root_path=args.dataset_root_path)
+        val_dataset = AudioMINST(data_paths=val_list, data_trainsforms=tf_array, include_rate=False)
+    elif args.dataset == 'AudioMNIST2':
+        val_dataset = FilterAudioMNIST(root_path=args.dataset_root_path, data_tsf=tf_array, include_rate=False, filter_fn=lambda x: x['accent'] != 'German')
     val_loader = DataLoader(dataset=val_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=args.num_workers)
 
     auTmodel, clsmodel = build_model(args)
