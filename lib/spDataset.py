@@ -336,7 +336,6 @@ class AudioMINST(Dataset):
             return (wavform, sample_rate), int(label)
         else:
             return wavform, int(label)
-        
     
     @staticmethod
     def default_splits(mode:str, fold:int, root_path:str) -> list[str]:
