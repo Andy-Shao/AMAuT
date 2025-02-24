@@ -21,51 +21,6 @@ def dataset_tag(dataset_name:str) -> str:
     else:
         raise Exception('No support')
 
-class FilterAudioMNIST(Dataset):
-    def __init__(self, root_path: str, filter_fn, data_tsf=None, include_rate=True):
-        super(FilterAudioMNIST, self).__init__()
-        data_pathes = load_datapath(root_path=root_path, filter_fn=filter_fn)
-        self.dataset = AudioMINST(data_paths=data_pathes, data_trainsforms=data_tsf, include_rate=include_rate)
-    
-    def __len__(self):
-        return len(self.dataset)
-
-    def __getitem__(self, index) -> Any:
-        return self.dataset[index]
-
-class AudioMINST(Dataset):
-    def __init__(self, data_paths: list[str], data_trainsforms=None, include_rate=True):
-        super(AudioMINST, self).__init__()
-        self.data_paths = data_paths
-        self.data_trainsforms = data_trainsforms
-        self.include_rate = include_rate
-
-    def __len__(self):
-        return len(self.data_paths)
-    
-    def __getitem__(self, index) -> tuple[object, float]:
-        (wavform, sample_rate) = torchaudio.load(self.data_paths[index])
-        label = self.data_paths[index].split('/')[-1].split('_')[0]
-        if self.data_trainsforms is not None:
-            wavform = self.data_trainsforms(wavform)
-        if self.include_rate:
-            return (wavform, sample_rate), int(label)
-        else:
-            return wavform, int(label)
-    
-def load_datapath(root_path: str, filter_fn) -> list[str]:
-    dataset_list = []
-    meta_file_path = root_path + '/audioMNIST_meta.txt'
-    with open(meta_file_path) as f:
-        meta_data = json.load(f)
-    for k,v in meta_data.items():
-        if filter_fn(v):
-            data_path = f'{root_path}/{k}'
-            for it in os.listdir(data_path):
-                if it.endswith('wav'):
-                    dataset_list.append(f'{data_path}/{it}')
-    return dataset_list
-
 def multi_process_store_to(loader: DataLoader, root_path: str, index_file_name: str, data_transf=None, label_transf=None) -> None:
     print(f'Store dataset into {root_path}, meta file is: {index_file_name}')
     data_index = pd.DataFrame(columns=['data_path', 'label'])

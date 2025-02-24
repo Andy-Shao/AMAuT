@@ -11,7 +11,8 @@ from torch.utils.data import DataLoader
 
 from lib.toolkit import print_argparse, relative_path, store_model_structure_to_txt
 from lib.wavUtils import Components, AudioPadding, AmplitudeToDB, time_shift, MelSpectrogramPadding, FrequenceTokenTransformer
-from lib.datasets import FilterAudioMNIST, ClipDataset, dataset_tag
+from lib.datasets import dataset_tag
+from lib.spDataset import FilterAudioMNIST
 from AuT.lib.model import AudioTransform, AudioClassifier
 from AuT.speech_commands.pre_train import lr_scheduler, build_optimizer
 from AuT.lib.loss import CrossEntropyLabelSmooth
@@ -75,7 +76,6 @@ if __name__ == '__main__':
         project='AC-PT (AuT)', name=f'{args.arch}-{dataset_tag(args.dataset)}', 
         mode='online' if args.wandb else 'disabled', config=args, tags=['Audio Classification', args.dataset, 'AuT'])
 
-    max_ms=1000
     sample_rate=48000
     args.n_mels=80
     n_fft=2048
@@ -84,7 +84,7 @@ if __name__ == '__main__':
     mel_scale='slaney'
     args.target_length=160
     tf_array = Components(transforms=[
-        AudioPadding(max_ms=max_ms, sample_rate=sample_rate, random_shift=True),
+        AudioPadding(sample_rate=sample_rate, random_shift=True, max_length=sample_rate),
         time_shift(shift_limit=.17, is_random=True, is_bidirection=True),
         a_transforms.MelSpectrogram(
             sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
@@ -98,7 +98,7 @@ if __name__ == '__main__':
     train_loader = DataLoader(dataset=train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=False, num_workers=args.num_workers)
 
     tf_array = Components(transforms=[
-        AudioPadding(max_ms=max_ms, sample_rate=sample_rate, random_shift=False),
+        AudioPadding(sample_rate=sample_rate, random_shift=False, max_length=sample_rate),
         a_transforms.MelSpectrogram(
             sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
             mel_scale=mel_scale
@@ -112,8 +112,8 @@ if __name__ == '__main__':
     val_loader = DataLoader(dataset=val_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=args.num_workers)
 
     auTmodel, clsmodel = build_model(args)
-    store_model_structure_to_txt(model=auTmodel, output_path=relative_path(args, 'auTmodel.txt'))
-    store_model_structure_to_txt(model=clsmodel, output_path=relative_path(args, 'clsmodel.txt'))
+    store_model_structure_to_txt(model=auTmodel, output_path=relative_path(args, f'{args.arch}-{dataset_tag(args.dataset)}-auT.txt'))
+    store_model_structure_to_txt(model=clsmodel, output_path=relative_path(args, f'{args.arch}-{dataset_tag(args.dataset)}-cls.txt'))
     optimizer = build_optimizer(args=args, auT=auTmodel, auC=clsmodel, auD=None)
     loss_fn = CrossEntropyLabelSmooth(num_classes=args.class_num, use_gpu=torch.cuda.is_available(), epsilon=args.smooth)
 
@@ -131,7 +131,7 @@ if __name__ == '__main__':
             features, labels = features.to(args.device), labels.to(args.device)
 
             optimizer.zero_grad()
-            outputs = clsmodel(auTmodel(features))
+            outputs, _ = clsmodel(auTmodel(features))
             loss = loss_fn(outputs, labels)
             loss.backward()
             optimizer.step()
@@ -155,7 +155,7 @@ if __name__ == '__main__':
             features, labels = features.to(args.device), labels.to(args.device)
             with torch.no_grad():
                 attens = auTmodel(features)
-                outputs = clsmodel(attens)
+                outputs, _ = clsmodel(attens)
                 _, preds = torch.max(outputs.detach(), dim=1)
             ttl_val_size += labels.shape[0]
             ttl_val_corr += (preds == labels).sum().cpu().item()
@@ -163,8 +163,8 @@ if __name__ == '__main__':
         print(f'Validation size:{ttl_val_size:.0f}, accuracy:{ttl_val_accu:.2f}%')
         if max_val_accu <= ttl_val_accu:
             max_val_accu = ttl_val_accu
-            torch.save(auTmodel.state_dict(), relative_path(args, 'AuT.pt'))
-            torch.save(clsmodel.state_dict(), relative_path(args, 'AuT-Cls.pt'))
+            torch.save(auTmodel.state_dict(), relative_path(args, f'{args.arch}-{dataset_tag(args.dataset)}-auT.pt'))
+            torch.save(clsmodel.state_dict(), relative_path(args, f'{args.arch}-{dataset_tag(args.dataset)}-cls.pt'))
 
         wandb.log({
             'Train/Accu': ttl_train_corr/ttl_train_size * 100.,

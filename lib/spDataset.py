@@ -289,3 +289,107 @@ class SpeechCommandsV2(Dataset):
         if self.label_tf is not None:
             label = self.label_tf(label)
         return wavform, label
+    
+class FilterAudioMNIST(Dataset):
+    def __init__(self, root_path: str, filter_fn, data_tsf=None, include_rate=True):
+        super(FilterAudioMNIST, self).__init__()
+        data_pathes = FilterAudioMNIST.load_datapath(root_path=root_path, filter_fn=filter_fn)
+        self.dataset = AudioMINST(data_paths=data_pathes, data_trainsforms=data_tsf, include_rate=include_rate)
+    
+    def __len__(self):
+        return len(self.dataset)
+
+    def __getitem__(self, index) -> Any:
+        return self.dataset[index]
+    
+    @staticmethod
+    def load_datapath(root_path: str, filter_fn) -> list[str]:
+        import json
+        dataset_list = []
+        meta_file_path = root_path + '/audioMNIST_meta.txt'
+        with open(meta_file_path) as f:
+            meta_data = json.load(f)
+        for k,v in meta_data.items():
+            if filter_fn(v):
+                data_path = f'{root_path}/{k}'
+                for it in os.listdir(data_path):
+                    if it.endswith('wav'):
+                        dataset_list.append(f'{data_path}/{it}')
+        return dataset_list
+
+class AudioMINST(Dataset):
+    def __init__(self, data_paths: list[str], data_trainsforms=None, include_rate=True):
+        super(AudioMINST, self).__init__()
+        self.data_paths = data_paths
+        self.data_trainsforms = data_trainsforms
+        self.include_rate = include_rate
+
+    def __len__(self):
+        return len(self.data_paths)
+    
+    def __getitem__(self, index) -> tuple[object, float]:
+        (wavform, sample_rate) = torchaudio.load(self.data_paths[index])
+        label = self.data_paths[index].split('/')[-1].split('_')[0]
+        if self.data_trainsforms is not None:
+            wavform = self.data_trainsforms(wavform)
+        if self.include_rate:
+            return (wavform, sample_rate), int(label)
+        else:
+            return wavform, int(label)
+        
+    
+    @staticmethod
+    def default_splits(mode:str, fold:int, root_path:str) -> list[str]:
+        """ This is the original paper's splits
+        "   see: https://github.com/soerenab/AudioMNIST/blob/master/preprocess_data.py
+        """
+        assert mode in ['train', 'test', 'validate'], 'No support'
+        assert fold in [0, 1, 2, 3, 4], 'No support'
+        splits = {
+            'train': [
+                set([
+                    28, 56,  7, 19, 35,  1,  6, 16, 23, 34, 46, 53, 36, 57,  9, 24, 37,  2,
+                    8, 17, 29, 39, 48, 54, 43, 58, 14, 25, 38,  3, 10, 20, 30, 40, 49, 55
+                ]),
+                set([
+                    36, 57,  9, 24, 37,  2,  8, 17, 29, 39, 48, 54, 43, 58, 14, 25, 38,  3,
+                    10, 20, 30, 40, 49, 55, 12, 47, 59, 15, 27, 41,  4, 11, 21, 31, 44, 50
+                ]),
+                set([
+                    43, 58, 14, 25, 38,  3, 10, 20, 30, 40, 49, 55, 12, 47, 59, 15, 27, 41, 
+                    4, 11, 21, 31, 44, 50, 26, 52, 60, 18, 32, 42,  5, 13, 22, 33, 45, 51
+                ]),
+                set([
+                    12, 47, 59, 15, 27, 41,  4, 11, 21, 31, 44, 50, 26, 52, 60, 18, 32, 42,
+                    5, 13, 22, 33, 45, 51, 28, 56,  7, 19, 35,  1,  6, 16, 23, 34, 46, 53
+                ]),
+                set([
+                    26, 52, 60, 18, 32, 42,  5, 13, 22, 33, 45, 51, 28, 56,  7, 19, 35,  1,
+                    6, 16, 23, 34, 46, 53, 36, 57,  9, 24, 37,  2,  8, 17, 29, 39, 48, 54
+                ])
+            ], 
+            'test': [
+                set([26, 52, 60, 18, 32, 42,  5, 13, 22, 33, 45, 51]),
+                set([28, 56,  7, 19, 35,  1,  6, 16, 23, 34, 46, 53]),
+                set([36, 57,  9, 24, 37,  2,  8, 17, 29, 39, 48, 54]),
+                set([43, 58, 14, 25, 38,  3, 10, 20, 30, 40, 49, 55]),
+                set([12, 47, 59, 15, 27, 41,  4, 11, 21, 31, 44, 50])
+            ],
+            "validate":[
+                set([12, 47, 59, 15, 27, 41,  4, 11, 21, 31, 44, 50]),
+                set([26, 52, 60, 18, 32, 42,  5, 13, 22, 33, 45, 51]),
+                set([28, 56,  7, 19, 35,  1,  6, 16, 23, 34, 46, 53]),
+                set([36, 57,  9, 24, 37,  2,  8, 17, 29, 39, 48, 54]),
+                set([43, 58, 14, 25, 38,  3, 10, 20, 30, 40, 49, 55])
+            ]
+        }
+
+        target_split = splits[mode][fold]
+
+        dataset_list = []
+        for it in target_split:
+            data_path = os.path.join(root_path, it)
+            for wav in os.listdir(data_path):
+                if it.endswith('wav'):
+                    dataset_list.append(os.path.join(data_path, wav))
+        return dataset_list
