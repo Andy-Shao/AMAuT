@@ -28,6 +28,7 @@ def analyze_AM2(args:argparse.Namespace, train_tf:torch.nn.Module, test_tf:torch
     auTmodel.load_state_dict(state_dict=torch.load(args.original_auT_weight_path))
     clsmodel.load_state_dict(state_dict=torch.load(args.original_auC_weight_path))
 
+    print('Inferencing...')
     ttl_test_size = 0.
     ttl_test_corr = 0.
     auTmodel.eval()
@@ -49,7 +50,7 @@ def analyze_AM(args:argparse.Namespace, train_tf:torch.nn.Module, test_tf:torch.
     for fold in range(5):
         train_list = AudioMINST.default_splits(mode='train', fold=fold, root_path=args.dataset_root_path)
         train_list += AudioMINST.default_splits(mode='validate', fold=fold, root_path=args.dataset_root_path)
-        train_set = AudioMINST(data_paths=args.dataset_root_path, data_trainsforms=train_tf, include_rate=False)
+        train_set = AudioMINST(data_paths=train_list, data_trainsforms=train_tf, include_rate=False)
         train_loader = DataLoader(
             dataset=train_set, batch_size=args.batch_size, shuffle=True, drop_last=False, num_workers=args.num_workers
         )
@@ -78,6 +79,7 @@ def analyze_AM(args:argparse.Namespace, train_tf:torch.nn.Module, test_tf:torch.
                 optimizer.zero_grad()
                 outputs, _ = clsmodel(auTmodel(features))
                 loss = loss_fn(outputs, labels)
+                loss.backward()
                 optimizer.step()
 
                 ttl_train_size += labels.shape[0]
@@ -89,6 +91,7 @@ def analyze_AM(args:argparse.Namespace, train_tf:torch.nn.Module, test_tf:torch.
             if epoch % args.interval == 0:
                 lr_scheduler(optimizer=optimizer, epoch=epoch, lr_cardinality=args.lr_cardinality)
 
+        print(f'Fold: {fold}, Inferencing...')
         auTmodel.eval()
         clsmodel.eval()
         ttl_test_size = 0.
