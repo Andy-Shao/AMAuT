@@ -234,3 +234,23 @@ class MergeDataset(Dataset):
         else:
             index -= len(self.set1)
             return self.set2[index]
+
+class PLDataset(Dataset):
+    def __init__(self, dataset:Dataset, pseudo_labels:torch.Tensor=None):
+        super(PLDataset, self).__init__()
+        self.dataset = dataset
+        self.pseudo_labels = pseudo_labels
+
+    def set_pl(self, pseudo_labels:torch.Tensor) -> None:
+        assert pseudo_labels is not None, 'No support'
+        self.pseudo_labels = pseudo_labels
+
+    def __len__(self):
+        return len(self.dataset)
+    
+    def __getitem__(self, index):
+        feature, label = self.dataset[index]
+        if self.pseudo_labels is None:
+            return feature, label
+        else:
+            return feature, int(self.pseudo_labels[index].cpu().item())
