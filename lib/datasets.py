@@ -218,3 +218,19 @@ class Dataset_Idx(Dataset):
     def __getitem__(self, index) -> tuple[torch.Tensor, int, int]:
         feature, label = self.dataset[index]
         return feature, label, index
+    
+class MergeDataset(Dataset):
+    def __init__(self, set1:Dataset, set2:Dataset):
+        super(MergeDataset, self).__init__()
+        self.set1 = set1
+        self.set2 = set2
+
+    def __len__(self):
+        return len(self.set1) + len(self.set2)
+
+    def __getitem__(self, index):
+        if index < len(self.set1):
+            return self.set1[index]
+        else:
+            index -= len(self.set1)
+            return self.set2[index]
