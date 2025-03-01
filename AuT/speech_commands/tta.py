@@ -14,7 +14,7 @@ from torch.utils.data import DataLoader
 from lib.toolkit import print_argparse
 from lib.datasets import dataset_tag, Dataset_Idx
 from lib.wavUtils import Components, AudioPadding, AmplitudeToDB, MelSpectrogramPadding, FrequenceTokenTransformer
-from AuT.speech_commands.pre_train import build_dataest, build_model, includeAutoencoder, op_copy, lr_scheduler
+from AuT.speech_commands.train import build_dataest, build_model, includeAutoencoder, op_copy, lr_scheduler
 from AuT.lib.model import AudioClassifier, AudioDecoder, AudioTransform
 from AuT.lib.plr import plr
 from AuT.lib.loss import SoftCrossEntropyLoss

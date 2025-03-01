@@ -12,8 +12,8 @@ from torch.utils.data import DataLoader
 from lib.toolkit import print_argparse, relative_path
 from lib.wavUtils import Components, AudioPadding, time_shift, AmplitudeToDB, MelSpectrogramPadding, FrequenceTokenTransformer
 from lib.spDataset import AudioMINST, FilterAudioMNIST
-from AuT.audiomnist.pre_train import build_model
-from AuT.speech_commands.pre_train import build_optimizer, lr_scheduler
+from AuT.audiomnist.train import build_model
+from AuT.speech_commands.train import build_optimizer, lr_scheduler
 from AuT.lib.loss import CrossEntropyLabelSmooth
 
 def analyze_AM2(args:argparse.Namespace, train_tf:torch.nn.Module, test_tf:torch.nn.Module):

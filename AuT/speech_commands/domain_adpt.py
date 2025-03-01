@@ -13,7 +13,7 @@ from lib.toolkit import print_argparse
 from lib.wavUtils import Components, AudioPadding, AmplitudeToDB, MelSpectrogramPadding, FrequenceTokenTransformer, time_shift
 from lib.spDataset import SpeechCommandsDataset
 from lib.datasets import MergeDataset
-from AuT.speech_commands.pre_train import build_model, lr_scheduler, build_optimizer
+from AuT.speech_commands.train import build_model, lr_scheduler, build_optimizer
 from AuT.speech_commands.tta import load_model
 
 class CrossEntropyLabelSmooth(nn.Module):

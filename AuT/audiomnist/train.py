@@ -14,7 +14,7 @@ from lib.wavUtils import Components, AudioPadding, AmplitudeToDB, time_shift, Me
 from lib.datasets import dataset_tag, ClipDataset
 from lib.spDataset import FilterAudioMNIST, AudioMINST
 from AuT.lib.model import AudioTransform, AudioClassifier
-from AuT.speech_commands.pre_train import lr_scheduler, build_optimizer
+from AuT.speech_commands.train import lr_scheduler, build_optimizer
 from AuT.lib.loss import CrossEntropyLabelSmooth
 from AuT.lib.config import CT_base
 

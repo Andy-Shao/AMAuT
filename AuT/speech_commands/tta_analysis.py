@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 from lib.toolkit import print_argparse, relative_path, count_ttl_params
 from lib.wavUtils import Components, AudioPadding, AmplitudeToDB, MelSpectrogramPadding, FrequenceTokenTransformer
 from lib.datasets import load_from
-from AuT.speech_commands.pre_train import build_dataest, build_model
+from AuT.speech_commands.train import build_dataest, build_model
 from AuT.lib.model import AudioTransform, AudioClassifier
 
 def inference(auT:AudioTransform, auC:AudioClassifier, data_loader:DataLoader, args:argparse.Namespace) -> float:
