@@ -40,7 +40,8 @@ class ResNetCT(nn.Module):
         super(ResNetCT, self).__init__()
         self.root = nn.Sequential(
             StdConv1d(in_channels=cin, out_channels=width, kernel_size=7, stride=2, bias=False, padding=3),
-            nn.GroupNorm(ng, width, eps=1e-6),
+            # nn.GroupNorm(ng, width, eps=1e-6),
+            nn.BatchNorm1d(num_features=width, eps=1e-6),
             nn.ReLU()
         )
         self.maxPool = nn.MaxPool1d(kernel_size=3, stride=2, padding=0)
@@ -68,7 +69,8 @@ class ResNet(nn.Module):
         super(ResNet, self).__init__()
         self.root = nn.Sequential(
             StdConv1d(in_channels=cin, out_channels=width, kernel_size=7, stride=2, bias=False, padding=3),
-            nn.GroupNorm(ng, width, eps=1e-6),
+            # nn.GroupNorm(ng, width, eps=1e-6),
+            nn.BatchNorm1d(num_features=width, eps=1e-6),
             nn.ReLU()
         )
 
@@ -128,18 +130,22 @@ class ResNetBlock(nn.Module):
         super(ResNetBlock, self).__init__()
 
         self.conv1 = conv1x1(cin, cmid, bias=False)
-        self.gn1 = nn.GroupNorm(num_groups=ng, num_channels=cmid, eps=1e-6)
+        # self.gn1 = nn.GroupNorm(num_groups=ng, num_channels=cmid, eps=1e-6)
+        self.gn1 = nn.BatchNorm1d(num_features=cmid, eps=1e-6)
         
         self.conv2 = conv3x3(cmid, cmid, stride=stride, bias=False)
-        self.gn2 = nn.GroupNorm(num_groups=ng, num_channels=cmid, eps=1e-6)
+        # self.gn2 = nn.GroupNorm(num_groups=ng, num_channels=cmid, eps=1e-6)
+        self.gn2 = nn.BatchNorm1d(num_features=cmid, eps=1e-6)
 
         self.conv3 = conv1x1(cmid, cout, bias=False)
-        self.gn3 = nn.GroupNorm(num_groups=ng, num_channels=cout, eps=1e-6)
+        # self.gn3 = nn.GroupNorm(num_groups=ng, num_channels=cout, eps=1e-6)
+        self.gn3 = nn.BatchNorm1d(num_features=cout, eps=1e-6)
         self.relu = nn.ReLU(inplace=True)
 
         if stride != 1 or cin != cout:
             self.downsample = conv1x1(cin, cout, stride=stride, bias=False)
-            self.ds_gn = nn.GroupNorm(num_groups=cout, num_channels=cout)
+            # self.ds_gn = nn.GroupNorm(num_groups=cout, num_channels=cout)
+            self.ds_gn = nn.BatchNorm1d(num_features=cout)
 
     def forward(self, x:torch.Tensor) -> torch.Tensor:
         residual = x
