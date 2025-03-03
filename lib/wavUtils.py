@@ -309,3 +309,16 @@ class RandomSpeed(nn.Module):
             else: 
                 it_num += 1
                 continue
+
+class BatchTransform(nn.Module):
+    def __init__(self, tf:nn.Module):
+        super(BatchTransform, self).__init__()
+        self.tf = tf
+
+    def forward(self, inputs:torch.Tensor) -> torch.Tensor:
+        outputs = []
+        for i in range(inputs.shape[0]):
+            output = self.tf(inputs[i])
+            outputs.append(torch.unsqueeze(output, dim=0))
+        outputs = torch.cat(outputs, dim=0)
+        return outputs

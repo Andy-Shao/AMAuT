@@ -1,2 +1,2 @@
 ,dataset,algorithm,tta-operation,corruption,accuracy,error,severity level,number of weight
-0,speech-commands,CT,,,95.69861009509876,4.301389904901242,0.0,96231868
+0,speech-commands,CT,,,95.90343818580834,4.096561814191659,0.0,96231868

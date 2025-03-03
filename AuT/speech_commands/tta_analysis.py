@@ -8,7 +8,8 @@ from torchaudio import transforms as a_transforms
 from torch.utils.data import DataLoader
 
 from lib.toolkit import print_argparse, relative_path, count_ttl_params
-from lib.wavUtils import Components, AudioPadding, AmplitudeToDB, MelSpectrogramPadding, FrequenceTokenTransformer
+from lib.wavUtils import Components, AudioPadding, AmplitudeToDB, MelSpectrogramPadding, FrequenceTokenTransformer, time_shift
+from lib.wavUtils import BatchTransform
 from lib.datasets import load_from
 from AuT.speech_commands.train import build_dataest, build_model
 from AuT.lib.model import AudioTransform, AudioClassifier
@@ -121,5 +122,58 @@ if __name__ == '__main__':
 
     # Adaptation
     # TODO
+
+    org_test_set = build_dataest(args=args, tsf=AudioPadding(max_length=sample_rate, sample_rate=sample_rate, random_shift=False), mode='test')
+    org_test_loader = DataLoader(
+        dataset=org_test_set, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=args.num_workers
+    )
+    lf = BatchTransform(tf=Components(transforms=[
+        time_shift(shift_limit=-.17, is_random=False, is_bidirection=False),
+        a_transforms.MelSpectrogram(
+            sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
+            mel_scale=mel_scale
+        ),
+        AmplitudeToDB(top_db=80., max_out=2.),
+        MelSpectrogramPadding(target_length=target_length),
+        FrequenceTokenTransformer()
+    ]))
+    rs = BatchTransform(tf=Components(transforms=[
+        time_shift(shift_limit=.17, is_random=False, is_bidirection=False),
+        a_transforms.MelSpectrogram(
+            sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
+            mel_scale=mel_scale
+        ),
+        AmplitudeToDB(top_db=80., max_out=2.),
+        MelSpectrogramPadding(target_length=target_length),
+        FrequenceTokenTransformer()
+    ]))
+    ns = BatchTransform(tf=Components(transforms=[
+        a_transforms.MelSpectrogram(
+            sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
+            mel_scale=mel_scale
+        ),
+        AmplitudeToDB(top_db=80., max_out=2.),
+        MelSpectrogramPadding(target_length=target_length),
+        FrequenceTokenTransformer()
+    ]))
+    ttl_test_size = 0.
+    ttl_test_curr = 0.
+    auTmodel.eval()
+    clsmodel.eval()
+    for inputs, labels in tqdm(org_test_loader):
+        labels = labels.to(args.device)
+        l_inputs = lf(inputs).to(args.device)
+        r_inputs = rs(inputs).to(args.device)
+        n_inputs = ns(inputs).to(args.device)
+
+        with torch.no_grad():
+            o1, _ = clsmodel(auTmodel(l_inputs))
+            o2, _ = clsmodel(auTmodel(r_inputs))
+            o3, _ = clsmodel(auTmodel(n_inputs))
+            outputs = (o1 + o2 + o3)/3.
+            _, preds = torch.max(outputs.detach(), dim=1)
+        ttl_test_size += labels.shape[0]
+        ttl_test_curr += (preds == labels).sum().cpu().item()
+    print(f'Election accuracy is: {ttl_test_curr/ttl_test_size*100.:.2f}%, samples size is: {ttl_test_size:.0f}')
 
     accu_record.to_csv(relative_path(args, args.output_csv_name))
