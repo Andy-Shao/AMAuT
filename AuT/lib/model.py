@@ -6,16 +6,6 @@ from ml_collections import  ConfigDict
 
 from .embed import Embedding as RestEmbedding
 
-# def cal_model_tag(dataset_tag:str, pre_tag:str) -> str:
-#     from lib.datasets import dataset_tag as dt
-#     assert dataset_tag in ['speech-commands', 'speech-commands-random', 'speech-commands-numbers'], 'No support'
-#     model_tag = pre_tag
-#     if dataset_tag == 'speech-commands':
-#         model_tag += f'-{dt(dataset_tag)}'
-#     else: 
-#         raise Exception('No support!')
-#     return model_tag
-
 def init_weights(m: nn.Module):
     class_name = m.__class__.__name__
     if class_name.find('Conv2d') != -1 or class_name.find('ConvTranspose2d') != -1:
