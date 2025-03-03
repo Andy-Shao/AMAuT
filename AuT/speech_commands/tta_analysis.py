@@ -14,6 +14,30 @@ from lib.datasets import load_from
 from AuT.speech_commands.train import build_dataest, build_model
 from AuT.lib.model import AudioTransform, AudioClassifier
 
+def elect_inference(
+    auT:AudioTransform, auC:AudioClassifier, data_loader:DataLoader, args:argparse.Namespace, aug1:torch.nn.Module, 
+    aug2:torch.nn.Module, no_aug:torch.nn.Module
+) -> float:
+    auT.eval()
+    auC.eval()
+    ttl_size = 0.
+    ttl_corr = 0.
+    for inputs, labels in tqdm(data_loader):
+        labels = labels.to(args.device)
+        ins1 = aug1(inputs).to(args.device)
+        ins2 = aug2(inputs).to(args.device)
+        ins3 = no_aug(inputs).to(args.device)
+        
+        with torch.no_grad():
+            o1, _ = auC(auT(ins1))
+            o2, _ = auC(auT(ins2))
+            o3, _ = auC(auT(ins3))
+            outputs = (o1 + o2 + o3)/3.
+            _, preds = torch.max(outputs.detach(), dim=1)
+        ttl_corr += (preds == labels).sum().cpu().item()
+        ttl_size += labels.shape[0]
+    return ttl_corr / ttl_size * 100.
+
 def inference(auT:AudioTransform, auC:AudioClassifier, data_loader:DataLoader, args:argparse.Namespace) -> float:
     auT.eval()
     auC.eval()
@@ -127,7 +151,7 @@ if __name__ == '__main__':
     org_test_loader = DataLoader(
         dataset=org_test_set, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=args.num_workers
     )
-    lf = BatchTransform(tf=Components(transforms=[
+    ls = BatchTransform(tf=Components(transforms=[
         time_shift(shift_limit=-.17, is_random=False, is_bidirection=False),
         a_transforms.MelSpectrogram(
             sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
@@ -156,24 +180,10 @@ if __name__ == '__main__':
         MelSpectrogramPadding(target_length=target_length),
         FrequenceTokenTransformer()
     ]))
-    ttl_test_size = 0.
-    ttl_test_curr = 0.
-    auTmodel.eval()
-    clsmodel.eval()
-    for inputs, labels in tqdm(org_test_loader):
-        labels = labels.to(args.device)
-        l_inputs = lf(inputs).to(args.device)
-        r_inputs = rs(inputs).to(args.device)
-        n_inputs = ns(inputs).to(args.device)
-
-        with torch.no_grad():
-            o1, _ = clsmodel(auTmodel(l_inputs))
-            o2, _ = clsmodel(auTmodel(r_inputs))
-            o3, _ = clsmodel(auTmodel(n_inputs))
-            outputs = (o1 + o2 + o3)/3.
-            _, preds = torch.max(outputs.detach(), dim=1)
-        ttl_test_size += labels.shape[0]
-        ttl_test_curr += (preds == labels).sum().cpu().item()
-    print(f'Election accuracy is: {ttl_test_curr/ttl_test_size*100.:.2f}%, samples size is: {ttl_test_size:.0f}')
+    ttl_adpt_curr = elect_inference(
+        auT=auTmodel, auC=clsmodel, data_loader=org_test_loader, args=args, aug1=ls, aug2=rs, no_aug=ns
+    )
+    print(f'Election accuracy is: {ttl_adpt_curr:.2f}%, samples size is: {len(org_test_set)}')
+    accu_record.loc[len(accu_record)] = [args.dataset, args.arch, 'election_inference', pd.NA, ttl_adpt_curr, 100.-ttl_adpt_curr, 0., num_weight]
 
     accu_record.to_csv(relative_path(args, args.output_csv_name))
