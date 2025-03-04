@@ -29,6 +29,23 @@ conda install conda-forge::tensorboard
 
 ## Processing
 
+### Preparing
+```shell
+export BASE_PATH=${the parent path of the project}
+conda activate my-audio
+cd Audio-Transform
+```
+
+### Training
+```shell
+ssh AuT/script/speech-commands/train.sh
+```
+
+### analysis
+```shell
+ssh AuT/script/speech-commands/tta_analysis.sh
+```
+
 ## Dataset
 
 ### Audio MNIST
