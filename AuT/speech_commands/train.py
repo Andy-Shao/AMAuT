@@ -154,7 +154,7 @@ if __name__ == '__main__':
     else:
         raise Exception('No support!')
     args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    args.full_output_path = os.path.join(args.output_path, args.dataset, 'AuT', 'pre_train')
+    args.full_output_path = os.path.join(args.output_path, args.dataset, 'AuT', 'train')
     try:
         os.makedirs(args.full_output_path)
     except:
