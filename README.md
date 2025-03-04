@@ -85,7 +85,7 @@ from unrecognized ones.
 ### Speech Commands Dataset v0.02
 Add five new words in the Dataset, such as, 'backward', 'forward', 'follow', 'learn', and 'visual'.
 
-+ Sample size: 64721 (train: 51088, test: 6835, validation: 6798)
++ Sample size: ??? (train: ???, test: ???, validation: ???)
 + Sampling rate: 16000
 + Class Number: 35
   
