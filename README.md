@@ -31,6 +31,15 @@ conda install conda-forge::tensorboard
 
 ## Dataset
 
+### Audio MNIST
+This repository contains code and data used in Interpreting and Explaining Deep Neural Networks for Classifying Audio Signals. The dataset consists of 30,000 audio samples of spoken digits (0–9) from 60 different speakers. Additionally, it holds the audioMNIST_meta.txt, which provides meta information such as the gender or age of each speaker.
+
++ sample size: 30000
++ sample rate: 48000
++ sample data shape: [1, 14073 - 47998]
+  
+[Audio MNIST Link](https://github.com/soerenab/AudioMNIST/tree/master)
+
 ### Speech Commands Dataset v0.01
 The dataset (1.4 GB) has 65,000 one-second long utterances of 30 short words by thousands of different people, contributed by public members through the AIY website. This is a set of one-second .wav audio files, each containing a single spoken English word.
 
@@ -54,9 +63,18 @@ from unrecognized ones.
 |white_noise|[1, 960000]|16000|
 
 [Speech Commands Dataset Link](https://research.google/blog/launching-the-speech-commands-dataset/)<br/>
-[Dataset Download Link](http://download.tensorflow.org/data/speech_commands_v0.01.tar.gz)<br/>
-[TensorFlow Document](https://www.tensorflow.org/datasets/community_catalog/huggingface/speech_commands)
+[Dataset Download Link](http://download.tensorflow.org/data/speech_commands_v0.01.tar.gz)
 
+### Speech Commands Dataset v0.02
+Add five new words in the Dataset, such as, 'backward', 'forward', 'follow', 'learn', and 'visual'.
+
++ Sample size: 64721 (train: 51088, test: 6835, validation: 6798)
++ Sampling rate: 16000
++ Class Number: 35
+  
+[Speech Commands Dataset Link](https://research.google/blog/launching-the-speech-commands-dataset/)<br/>
+[Pytorch Document](https://pytorch.org/audio/main/generated/torchaudio.datasets.SPEECHCOMMANDS.html)
+  
 <!-- ### ReefSet v1.0
 This dataset includes audio clips from coral reef habitats across 16 datasets and 11 countries. The dataset includes 
 57074 samples and each sample is 1.88 seconds in length. 
