@@ -1,8 +1,10 @@
 export BASE_PATH=${BASE_PATH:-'/root'}
 
 python -m AuT.speech_commands.tta_analysis --dataset 'speech-commands' --dataset_root_path $BASE_PATH'/data/speech_commands' \
-    --corrupted_data_root_path $BASE_PATH'/tmp/speech-commands/doing_the_dishes-bg/3.0' \
     --output_csv_name 'tta_analysis.csv' --batch_size 32 --arch 'CT' --arch_level 'base' \
-    --original_auT_weight_path './result/speech-commands/AuT/pre_train/CT-SC-auT.pt' \
-    --original_auC_weight_path './result/speech-commands/AuT/pre_train/CT-SC-cls.pt' \
-    --data_type 'raw' --corruption 'doing_the_dishes' --severity_level 3.0
+    --original_auT_weight_path './result/speech-commands/AuT/train/CT-SC-auT.pt' \
+    --original_auC_weight_path './result/speech-commands/AuT/train/CT-SC-cls.pt' \
+    --original_auT2_weight_path './result/speech-commands/AuT/train/CT-SC-auT2.pt' \
+    --original_auC2_weight_path './result/speech-commands/AuT/train/CT-SC-cls2.pt' \
+    --original_auT3_weight_path './result/speech-commands/AuT/train/CT-SC-auT3.pt' \
+    --original_auC3_weight_path './result/speech-commands/AuT/train/CT-SC-cls3.pt'
