@@ -89,7 +89,7 @@ def load_model(args:argparse.Namespace, auT:AudioTransform, auC:AudioClassifier,
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
-    ap.add_argument('--dataset', type=str, default='speech-commands', choices=['speech-commands'])
+    ap.add_argument('--dataset', type=str, default='speech-commands', choices=['speech-commands', 'speech-commands_v2'])
     ap.add_argument('--dataset_root_path', type=str)
     ap.add_argument('--corrupted_data_root_path', type=str)
     ap.add_argument('--num_workers', type=int, default=16)
@@ -116,6 +116,8 @@ if __name__ == '__main__':
     if args.dataset == 'speech-commands':
         args.class_num = 30
         args.dataset_type = 'all'
+    elif args.dataset == 'speech-commands_v2':
+        args.class_num = 35
     else:
         raise Exception('No support!')
     args.device = 'cuda' if torch.cuda.is_available() else 'cpu'

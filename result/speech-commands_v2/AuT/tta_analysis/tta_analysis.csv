@@ -1,0 +1,5 @@
+,dataset,algorithm,tta-operation,corruption,accuracy,error,severity level,number of weight
+0,speech-commands_v2,CT,,,94.95683780099955,5.043162199000449,0.0,96233158
+1,speech-commands_v2,CT,Aug_elect,,95.1385733757383,4.861426624261696,0.0,96233158
+2,speech-commands_v2,CT,Mlt-train_elect,,95.85642889595638,4.143571104043616,0.0,96233158
+3,speech-commands_v2,CT,Hybrid_elect,,95.75647432985008,4.243525670149921,0.0,96233158
