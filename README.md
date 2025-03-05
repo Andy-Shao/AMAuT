@@ -31,7 +31,7 @@ conda install conda-forge::tensorboard
 
 ### Preparing
 ```shell
-export BASE_PATH=${the parent path of the project}
+export BASE_PATH=${the parent directory of the project}
 conda activate my-audio
 cd Audio-Transform
 ```
