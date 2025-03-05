@@ -92,8 +92,10 @@ def build_optimizer(args: argparse.Namespace, auT:nn.Module, auC:nn.Module, auD:
 def build_model(args:argparse.Namespace) -> tuple[AudioTransform, AudioClassifier, AudioDecoder]:
     if args.arch_level == 'base':
         config = CT_base(class_num=args.class_num, n_mels=args.n_mels)
-        config.embedding.in_shape = [args.n_mels, 104]
+        config.embedding.in_shape = [args.n_mels, args.target_length]
         config.embedding.arch = args.arch
+        if args.dataset == 'speech-commands_v2':
+            config.embedding.num_layers = [6, 12]
         auTmodel = AudioTransform(config=config).to(device=args.device)
         clsmodel = AudioClassifier(config=config).to(device=args.device)
 
@@ -105,7 +107,7 @@ def build_model(args:argparse.Namespace) -> tuple[AudioTransform, AudioClassifie
 
     return auTmodel, clsmodel, auDecoder
 
-def build_dataest(args:argparse.Namespace, tsf:nn.Module, mode:str) -> Dataset:
+def build_dataset(args:argparse.Namespace, tsf:nn.Module, mode:str) -> Dataset:
     if args.dataset == 'speech-commands':
         dataset = SpeechCommandsDataset(
             root_path=args.dataset_root_path, mode=mode, include_rate=False, data_tfs=tsf,
@@ -180,7 +182,7 @@ if __name__ == '__main__':
     win_length=400
     hop_length=155
     mel_scale='slaney'
-    target_length=104
+    args.target_length=104
     tf_array = Components(transforms=[
         AudioPadding(max_length=sample_rate, sample_rate=sample_rate, random_shift=True),
         time_shift(shift_limit=.17, is_random=True, is_bidirection=True),
@@ -189,11 +191,11 @@ if __name__ == '__main__':
             mel_scale=mel_scale
         ), # 80 x 104
         AmplitudeToDB(top_db=80., max_out=2.),
-        MelSpectrogramPadding(target_length=target_length),
+        MelSpectrogramPadding(target_length=args.target_length),
         FrequenceTokenTransformer()
     ])
 
-    train_dataset = build_dataest(args=args, tsf=tf_array, mode='train')
+    train_dataset = build_dataset(args=args, tsf=tf_array, mode='train')
     train_loader = DataLoader(
         dataset=train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=False, num_workers=args.num_workers
     )
@@ -205,10 +207,10 @@ if __name__ == '__main__':
             mel_scale=mel_scale
         ),
         AmplitudeToDB(top_db=80., max_out=2.),
-        MelSpectrogramPadding(target_length=target_length),
+        MelSpectrogramPadding(target_length=args.target_length),
         FrequenceTokenTransformer()
     ])
-    val_dataset = build_dataest(args=args, tsf=tf_array, mode='validation')
+    val_dataset = build_dataset(args=args, tsf=tf_array, mode='validation' if args.dataset == 'speech-commands' else 'test')
     val_loader = DataLoader(
         dataset=val_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=args.num_workers
     )

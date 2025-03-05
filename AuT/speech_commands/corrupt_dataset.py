@@ -8,7 +8,7 @@ from lib.toolkit import print_argparse
 from lib.wavUtils import Components, BackgroundNoise, AudioPadding, time_shift
 from lib.spDataset import BackgroundNoiseDataset
 from lib.datasets import load_from, TransferDataset
-from AuT.speech_commands.train import build_dataest
+from AuT.speech_commands.train import build_dataset
 
 def store_to(dataset: torch.utils.data.Dataset, root_path:str, index_file_name:str, args:argparse.Namespace, data_transf=None, label_transf=None, parallel=False) -> None:
     from lib.datasets import store_to as single_store_to, multi_process_store_to
@@ -58,7 +58,7 @@ if __name__ == '__main__':
         # AudioPadding(max_length=args.sample_rate, sample_rate=args.sample_rate, random_shift=True),
         BackgroundNoise(noise_level=args.severity_level, noise=noise, is_random=args.rand_bg)
     ])
-    origin_dataset = build_dataest(args=args, tsf=audio_tsf, mode='test')
+    origin_dataset = build_dataset(args=args, tsf=audio_tsf, mode='test')
     print('Generate containminated dataset')
     store_to(dataset=origin_dataset, root_path=args.output_path, index_file_name=args.meta_file_name, args=args, parallel=args.parallel)
 

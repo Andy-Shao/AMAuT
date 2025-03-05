@@ -11,7 +11,7 @@ from lib.toolkit import print_argparse, relative_path, count_ttl_params
 from lib.wavUtils import Components, AudioPadding, AmplitudeToDB, MelSpectrogramPadding, FrequenceTokenTransformer, time_shift
 from lib.wavUtils import BatchTransform
 from lib.datasets import load_from
-from AuT.speech_commands.train import build_dataest, build_model
+from AuT.speech_commands.train import build_dataset, build_model
 from AuT.lib.model import AudioTransform, AudioClassifier
 
 def aug_inference(
@@ -139,7 +139,7 @@ if __name__ == '__main__':
     win_length=400
     hop_length=155
     mel_scale='slaney'
-    target_length=104
+    args.target_length=104
     tf_array = Components(transforms=[
         AudioPadding(max_length=sample_rate, sample_rate=sample_rate, random_shift=False),
         a_transforms.MelSpectrogram(
@@ -147,10 +147,10 @@ if __name__ == '__main__':
             mel_scale=mel_scale
         ),
         AmplitudeToDB(top_db=80., max_out=2.),
-        MelSpectrogramPadding(target_length=target_length),
+        MelSpectrogramPadding(target_length=args.target_length),
         FrequenceTokenTransformer()
     ])
-    test_dataset = build_dataest(args=args, tsf=tf_array, mode='test')
+    test_dataset = build_dataset(args=args, tsf=tf_array, mode='test')
     test_loader = DataLoader(dataset=test_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=args.num_workers)
 
     auTmodel, clsmodel, _ = build_model(args=args)
@@ -174,7 +174,7 @@ if __name__ == '__main__':
     # TODO
 
     print('Augmentation election inference')
-    org_test_set = build_dataest(args=args, tsf=AudioPadding(max_length=sample_rate, sample_rate=sample_rate, random_shift=False), mode='test')
+    org_test_set = build_dataset(args=args, tsf=AudioPadding(max_length=sample_rate, sample_rate=sample_rate, random_shift=False), mode='test')
     org_test_loader = DataLoader(
         dataset=org_test_set, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=args.num_workers
     )
@@ -185,7 +185,7 @@ if __name__ == '__main__':
             mel_scale=mel_scale
         ),
         AmplitudeToDB(top_db=80., max_out=2.),
-        MelSpectrogramPadding(target_length=target_length),
+        MelSpectrogramPadding(target_length=args.target_length),
         FrequenceTokenTransformer()
     ]))
     rs = BatchTransform(tf=Components(transforms=[
@@ -195,7 +195,7 @@ if __name__ == '__main__':
             mel_scale=mel_scale
         ),
         AmplitudeToDB(top_db=80., max_out=2.),
-        MelSpectrogramPadding(target_length=target_length),
+        MelSpectrogramPadding(target_length=args.target_length),
         FrequenceTokenTransformer()
     ]))
     ns = BatchTransform(tf=Components(transforms=[
@@ -204,7 +204,7 @@ if __name__ == '__main__':
             mel_scale=mel_scale
         ),
         AmplitudeToDB(top_db=80., max_out=2.),
-        MelSpectrogramPadding(target_length=target_length),
+        MelSpectrogramPadding(target_length=args.target_length),
         FrequenceTokenTransformer()
     ]))
     ttl_adpt_curr = elect_inference(

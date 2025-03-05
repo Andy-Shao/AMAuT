@@ -14,7 +14,7 @@ from torch.utils.data import DataLoader
 from lib.toolkit import print_argparse
 from lib.datasets import dataset_tag, Dataset_Idx
 from lib.wavUtils import Components, AudioPadding, AmplitudeToDB, MelSpectrogramPadding, FrequenceTokenTransformer
-from AuT.speech_commands.train import build_dataest, build_model, includeAutoencoder, op_copy, lr_scheduler
+from AuT.speech_commands.train import build_dataset, build_model, includeAutoencoder, op_copy, lr_scheduler
 from AuT.lib.model import AudioClassifier, AudioDecoder, AudioTransform
 from AuT.lib.plr import plr
 from AuT.lib.loss import SoftCrossEntropyLoss
@@ -188,7 +188,7 @@ if __name__ == '__main__':
         MelSpectrogramPadding(target_length=target_length),
         FrequenceTokenTransformer()
     ])
-    test_dataset = build_dataest(args=args, tsf=tf_array, mode='test')
+    test_dataset = build_dataset(args=args, tsf=tf_array, mode='test')
     test_loader = DataLoader(
         dataset=test_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=args.num_workers
     )

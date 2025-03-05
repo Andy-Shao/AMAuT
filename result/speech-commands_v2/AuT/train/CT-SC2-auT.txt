@@ -39,7 +39,7 @@ AudioTransform(
           (downsample): StdConv1d(512, 1024, kernel_size=(1,), stride=(2,), bias=False)
           (ds_gn): BatchNorm1d(1024, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
         )
-        (8-15): 8 x ResNetBlock(
+        (8-19): 12 x ResNetBlock(
           (conv1): StdConv1d(1024, 256, kernel_size=(1,), stride=(1,), bias=False)
           (gn1): BatchNorm1d(256, eps=1e-06, momentum=0.1, affine=True, track_running_stats=True)
           (conv2): StdConv1d(256, 256, kernel_size=(3,), stride=(1,), padding=(1,), bias=False)
