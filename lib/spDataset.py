@@ -272,6 +272,10 @@ class SpeechCommandsV2(Dataset):
         from torchaudio.datasets import SPEECHCOMMANDS
         super(SpeechCommandsV2, self).__init__()
         assert mode in ['training', 'validation', 'testing', None], 'No support'
+
+        if not os.path.exists(root_path):
+            os.makedirs(root_path)  
+
         self.dataset = SPEECHCOMMANDS(
             root=root_path, url='speech_commands_v0.02', folder_in_archive=folder_in_archive, subset=mode, download=download
         )

@@ -96,7 +96,6 @@ def build_model(args:argparse.Namespace) -> tuple[AudioTransform, AudioClassifie
         config.embedding.arch = args.arch
         if args.dataset == 'speech-commands_v2':
             config.embedding.num_layers = [6, 12]
-            config.transform.mlp_dp_rt = .15
         auTmodel = AudioTransform(config=config).to(device=args.device)
         clsmodel = AudioClassifier(config=config).to(device=args.device)
 
