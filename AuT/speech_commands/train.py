@@ -210,7 +210,7 @@ if __name__ == '__main__':
         MelSpectrogramPadding(target_length=args.target_length),
         FrequenceTokenTransformer()
     ])
-    val_dataset = build_dataset(args=args, tsf=tf_array, mode='validation' if args.dataset == 'speech-commands' else 'test')
+    val_dataset = build_dataset(args=args, tsf=tf_array, mode='validation')
     val_loader = DataLoader(
         dataset=val_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=args.num_workers
     )
