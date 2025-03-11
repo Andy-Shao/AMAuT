@@ -1,8 +1,9 @@
 # Audio-Transform
 
 ## Project Structure
-+ **CoNMix**: the CoNMix test-time training algorithm implement
 + **AuT**: the Audio Transform structure
++ **lib**: library
++ **result**: training and analysis results
 
 ## Software Environment
 ```shell
