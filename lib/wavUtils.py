@@ -322,3 +322,10 @@ class BatchTransform(nn.Module):
             outputs.append(torch.unsqueeze(output, dim=0))
         outputs = torch.cat(outputs, dim=0)
         return outputs
+    
+class Stereo2Mono(nn.Module):
+    def __init__(self):
+        super(Stereo2Mono, self).__init__()
+
+    def forward(self, wavform:torch.Tensor) -> torch.Tensor:
+        return wavform.mean(dim=0, keepdim=True)
