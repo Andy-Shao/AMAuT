@@ -29,21 +29,22 @@ def build_model(args:argparse.Namespace) -> tuple[AudioTransform, AudioClassifie
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
-    ap.add_argument('--dataset', type=str, default='AudioMNIST', choices=['AudioMNIST', 'AudioMNIST2'])
+    ap.add_argument('--dataset', type=str, default='AudioMNIST', choices=['AudioMNIST'])
+    ap.add_argument('--hold', type=int, default=0, choices=[0, 1, 2, 3, 4])
     ap.add_argument('--dataset_root_path', type=str)
     ap.add_argument('--num_workers', type=int, default=16)
     ap.add_argument('--output_path', type=str, default='./result')
+    ap.add_argument('--file_name_suffix', type=str, default='')
+    ap.add_argument('--validation_mode', type='str', default='validate', choices=['validate', 'test'])
 
     ap.add_argument('--wandb', action='store_true')
     ap.add_argument('--seed', type=int, default=2025, help='random seed')
-    ap.add_argument('--model_topology', action='store_true')
 
     ap.add_argument('--max_epoch', type=int, default=200, help='max epoch')
     ap.add_argument('--interval', type=int, default=1, help='interval number')
     ap.add_argument('--batch_size', type=int, default=64, help='batch size')
     ap.add_argument('--lr', type=float, default=1e-2, help='learning rate')
     ap.add_argument('--lr_cardinality', type=int, default=40)
-    ap.add_argument('--lr_dec', type=float, default=1.25)
     ap.add_argument('--smooth', type=float, default=.1)
     ap.add_argument('--early_stop', type=int, default=-1)
     ap.add_argument('--arch', type=str, default='CT', choices=['CT', 'CTA'])
@@ -51,8 +52,6 @@ if __name__ == '__main__':
 
     args = ap.parse_args()
     if args.dataset == 'AudioMNIST':
-        args.class_num = 10
-    elif args.dataset == 'AudioMNIST2':
         args.class_num = 10
     else:
         raise Exception('No support!')
@@ -95,11 +94,9 @@ if __name__ == '__main__':
         FrequenceTokenTransformer()
     ])
     if args.dataset == 'AudioMNIST':
-        train_list = AudioMINST.default_splits(mode='train', fold=0, root_path=args.dataset_root_path)
-        train_list += AudioMINST.default_splits(mode='validate', fold=0, root_path=args.dataset_root_path)
+        train_list = AudioMINST.default_splits(mode='train', fold=args.fold, root_path=args.dataset_root_path)
+        train_list += AudioMINST.default_splits(mode='validate', fold=args.fold, root_path=args.dataset_root_path)
         train_dataset = AudioMINST(data_paths=train_list, data_trainsforms=tf_array, include_rate=False)
-    elif args.dataset == 'AudioMNIST2':
-        train_dataset = FilterAudioMNIST(root_path=args.dataset_root_path, data_tsf=tf_array, include_rate=False, filter_fn=lambda x: x['accent'] == 'German')
     train_loader = DataLoader(dataset=train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=False, num_workers=args.num_workers)
 
     tf_array = Components(transforms=[
@@ -113,15 +110,13 @@ if __name__ == '__main__':
         FrequenceTokenTransformer()
     ])
     if args.dataset == 'AudioMNIST':
-        test_list = AudioMINST.default_splits(mode='test', fold=0, root_path=args.dataset_root_path)
+        test_list = AudioMINST.default_splits(mode=args.validation_mode, fold=args.fold, root_path=args.dataset_root_path)
         test_dataset = AudioMINST(data_paths=test_list, data_trainsforms=tf_array, include_rate=False)
-    elif args.dataset == 'AudioMNIST2':
-        test_dataset = FilterAudioMNIST(root_path=args.dataset_root_path, data_tsf=tf_array, include_rate=False, filter_fn=lambda x: x['accent'] != 'German')
     test_loader = DataLoader(dataset=test_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=args.num_workers)
 
     auTmodel, clsmodel = build_model(args)
-    store_model_structure_to_txt(model=auTmodel, output_path=relative_path(args, f'{args.arch}-{dataset_tag(args.dataset)}-auT.txt'))
-    store_model_structure_to_txt(model=clsmodel, output_path=relative_path(args, f'{args.arch}-{dataset_tag(args.dataset)}-cls.txt'))
+    store_model_structure_to_txt(model=auTmodel, output_path=relative_path(args, f'{args.arch}-{dataset_tag(args.dataset)}-auT{args.file_name_suffix}.txt'))
+    store_model_structure_to_txt(model=clsmodel, output_path=relative_path(args, f'{args.arch}-{dataset_tag(args.dataset)}-cls{args.file_name_suffix}.txt'))
     optimizer = build_optimizer(args=args, auT=auTmodel, auC=clsmodel, auD=None)
     loss_fn = CrossEntropyLabelSmooth(num_classes=args.class_num, use_gpu=torch.cuda.is_available(), epsilon=args.smooth)
 
@@ -168,8 +163,8 @@ if __name__ == '__main__':
             ttl_test_corr += (preds == labels).sum().cpu().item()
         ttl_val_accu = ttl_test_corr/ttl_test_size * 100.
         print(f'Testing size:{ttl_test_size:.0f}, accuracy:{ttl_val_accu:.2f}%')
-        torch.save(auTmodel.state_dict(), relative_path(args, f'{args.arch}-{dataset_tag(args.dataset)}-auT.pt'))
-        torch.save(clsmodel.state_dict(), relative_path(args, f'{args.arch}-{dataset_tag(args.dataset)}-cls.pt'))
+        torch.save(auTmodel.state_dict(), relative_path(args, f'{args.arch}-{dataset_tag(args.dataset)}-auT{args.file_name_suffix}.pt'))
+        torch.save(clsmodel.state_dict(), relative_path(args, f'{args.arch}-{dataset_tag(args.dataset)}-cls{args.file_name_suffix}.pt'))
 
         wandb.log({
             'Train/Accu': ttl_train_corr/ttl_train_size * 100.,
