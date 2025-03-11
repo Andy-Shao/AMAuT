@@ -120,6 +120,7 @@ if __name__ == '__main__':
     optimizer = build_optimizer(args=args, auT=auTmodel, auC=clsmodel, auD=None)
     loss_fn = CrossEntropyLabelSmooth(num_classes=args.class_num, use_gpu=torch.cuda.is_available(), epsilon=args.smooth)
 
+    max_accu = 0.
     for epoch in range(args.max_epoch):
         print(f"Epoch {epoch+1}/{args.max_epoch}")
 
@@ -163,8 +164,10 @@ if __name__ == '__main__':
             ttl_val_corr += (preds == labels).sum().cpu().item()
         ttl_val_accu = ttl_val_corr/ttl_val_size * 100.
         print(f'Validation size:{ttl_val_size:.0f}, accuracy:{ttl_val_accu:.2f}%')
-        torch.save(auTmodel.state_dict(), relative_path(args, f'{args.arch}-{dataset_tag(args.dataset)}-auT{args.file_name_suffix}.pt'))
-        torch.save(clsmodel.state_dict(), relative_path(args, f'{args.arch}-{dataset_tag(args.dataset)}-cls{args.file_name_suffix}.pt'))
+        if ttl_val_accu >= max_accu:
+            max_accu = ttl_val_accu
+            torch.save(auTmodel.state_dict(), relative_path(args, f'{args.arch}-{dataset_tag(args.dataset)}-auT{args.file_name_suffix}.pt'))
+            torch.save(clsmodel.state_dict(), relative_path(args, f'{args.arch}-{dataset_tag(args.dataset)}-cls{args.file_name_suffix}.pt'))
 
         wandb.log({
             'Train/Accu': ttl_train_corr/ttl_train_size * 100.,
