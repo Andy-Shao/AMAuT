@@ -30,12 +30,12 @@ def build_model(args:argparse.Namespace) -> tuple[AudioTransform, AudioClassifie
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument('--dataset', type=str, default='AudioMNIST', choices=['AudioMNIST'])
-    ap.add_argument('--hold', type=int, default=0, choices=[0, 1, 2, 3, 4])
+    ap.add_argument('--fold', type=int, default=0, choices=[0, 1, 2, 3, 4])
     ap.add_argument('--dataset_root_path', type=str)
     ap.add_argument('--num_workers', type=int, default=16)
     ap.add_argument('--output_path', type=str, default='./result')
     ap.add_argument('--file_name_suffix', type=str, default='')
-    ap.add_argument('--validation_mode', type='str', default='validate', choices=['validate', 'test'])
+    ap.add_argument('--validation_mode', type=str, default='validate', choices=['validate', 'test'])
 
     ap.add_argument('--wandb', action='store_true')
     ap.add_argument('--seed', type=int, default=2025, help='random seed')
@@ -56,7 +56,7 @@ if __name__ == '__main__':
     else:
         raise Exception('No support!')
     args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    args.full_output_path = os.path.join(args.output_path, args.dataset, 'AuT', 'pre_train')
+    args.full_output_path = os.path.join(args.output_path, args.dataset, 'AuT', 'train', str(args.fold))
     try:
         os.makedirs(args.full_output_path)
     except:
@@ -110,9 +110,9 @@ if __name__ == '__main__':
         FrequenceTokenTransformer()
     ])
     if args.dataset == 'AudioMNIST':
-        test_list = AudioMINST.default_splits(mode=args.validation_mode, fold=args.fold, root_path=args.dataset_root_path)
-        test_dataset = AudioMINST(data_paths=test_list, data_trainsforms=tf_array, include_rate=False)
-    test_loader = DataLoader(dataset=test_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=args.num_workers)
+        val_list = AudioMINST.default_splits(mode=args.validation_mode, fold=args.fold, root_path=args.dataset_root_path)
+        val_dataset = AudioMINST(data_paths=val_list, data_trainsforms=tf_array, include_rate=False)
+    val_loader = DataLoader(dataset=val_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=args.num_workers)
 
     auTmodel, clsmodel = build_model(args)
     store_model_structure_to_txt(model=auTmodel, output_path=relative_path(args, f'{args.arch}-{dataset_tag(args.dataset)}-auT{args.file_name_suffix}.txt'))
@@ -148,21 +148,21 @@ if __name__ == '__main__':
         if epoch % args.interval == 0:
             lr_scheduler(optimizer=optimizer, epoch=epoch, lr_cardinality=args.lr_cardinality)
 
-        print("Testing...")
-        ttl_test_size = 0.
-        ttl_test_corr = 0.
+        print("Validating...")
+        ttl_val_size = 0.
+        ttl_val_corr = 0.
         auTmodel.eval()
         clsmodel.eval()
-        for features, labels in tqdm(test_loader):
+        for features, labels in tqdm(val_loader):
             features, labels = features.to(args.device), labels.to(args.device)
             with torch.no_grad():
                 attens = auTmodel(features)
                 outputs, _ = clsmodel(attens)
                 _, preds = torch.max(outputs.detach(), dim=1)
-            ttl_test_size += labels.shape[0]
-            ttl_test_corr += (preds == labels).sum().cpu().item()
-        ttl_val_accu = ttl_test_corr/ttl_test_size * 100.
-        print(f'Testing size:{ttl_test_size:.0f}, accuracy:{ttl_val_accu:.2f}%')
+            ttl_val_size += labels.shape[0]
+            ttl_val_corr += (preds == labels).sum().cpu().item()
+        ttl_val_accu = ttl_val_corr/ttl_val_size * 100.
+        print(f'Validation size:{ttl_val_size:.0f}, accuracy:{ttl_val_accu:.2f}%')
         torch.save(auTmodel.state_dict(), relative_path(args, f'{args.arch}-{dataset_tag(args.dataset)}-auT{args.file_name_suffix}.pt'))
         torch.save(clsmodel.state_dict(), relative_path(args, f'{args.arch}-{dataset_tag(args.dataset)}-cls{args.file_name_suffix}.pt'))
 
@@ -170,7 +170,7 @@ if __name__ == '__main__':
             'Train/Accu': ttl_train_corr/ttl_train_size * 100.,
             'Train/Loss': ttl_train_loss/ttl_train_size,
             'Train/LR': learning_rate,
-            'Test/Accu': ttl_test_corr/ttl_test_size * 100.,
+            'Val/Accu': ttl_val_corr/ttl_val_size * 100.,
         }, step=epoch, commit=True)
 
         if args.early_stop >= 0:
