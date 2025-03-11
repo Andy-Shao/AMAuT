@@ -69,21 +69,16 @@ def inference(auT:AudioTransform, auC:AudioClassifier, data_loader:DataLoader, a
 
     return ttl_corr / ttl_size * 100.0
 
-def load_model(args:argparse.Namespace, auT:AudioTransform, auC:AudioClassifier, mode='original', version=1):
-    assert mode in ['original', 'adapted'], 'No support'
-    if mode == 'original':
-        if version == 1:
-            auT_path = args.original_auT_weight_path
-            auC_path = args.original_auC_weight_path
-        elif version == 2:
-            auT_path = args.original_auT2_weight_path
-            auC_path = args.original_auC2_weight_path
-        elif version == 3:
-            auT_path = args.original_auT3_weight_path
-            auC_path = args.original_auC3_weight_path
-    else:
-        auT_path = args.adapted_auT_weight_path
-        auC_path = args.adapted_auT_weight_path
+def load_model(args:argparse.Namespace, auT:AudioTransform, auC:AudioClassifier, version=1):
+    if version == 1:
+        auT_path = args.original_auT_weight_path
+        auC_path = args.original_auC_weight_path
+    elif version == 2:
+        auT_path = args.original_auT2_weight_path
+        auC_path = args.original_auC2_weight_path
+    elif version == 3:
+        auT_path = args.original_auT3_weight_path
+        auC_path = args.original_auC3_weight_path
     auT.load_state_dict(state_dict=torch.load(auT_path))
     auC.load_state_dict(state_dict=torch.load(auC_path))
 
@@ -150,12 +145,13 @@ if __name__ == '__main__':
     num_weight = count_ttl_params(model=auTmodel) + count_ttl_params(model=clsmodel)
 
     print('Origin')
-    load_model(args=args, auT=auTmodel, auC=clsmodel, mode='original')
+    load_model(args=args, auT=auTmodel, auC=clsmodel)
     accu = inference(auT=auTmodel, auC=clsmodel, data_loader=test_loader, args=args)
     accu_record.loc[len(accu_record)] = [args.dataset, args.arch, pd.NA, accu, 100.0-accu, num_weight]
     print(f'Original testing -- accuracy: {accu:.2f}%, sample size: {len(test_dataset)}')
 
     print('Augmentation election inference')
+    load_model(args=args, auT=auTmodel, auC=clsmodel)
     org_test_set = build_dataset(args=args, tsf=AudioPadding(max_length=sample_rate, sample_rate=sample_rate, random_shift=False), mode='test')
     org_test_loader = DataLoader(
         dataset=org_test_set, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=args.num_workers
@@ -196,10 +192,11 @@ if __name__ == '__main__':
     accu_record.loc[len(accu_record)] = [args.dataset, args.arch, 'Aug_elect', ttl_adpt_curr, 100.-ttl_adpt_curr, num_weight]
 
     print('Multi-training election inference')
+    load_model(args=args, auT=auTmodel, auC=clsmodel)
     auT2, cls2, _ = build_model(args=args)
-    load_model(args=args, auT=auT2, auC=cls2, mode='original', version=2)
+    load_model(args=args, auT=auT2, auC=cls2, version=2)
     auT3, cls3, _ = build_model(args=args)
-    load_model(args=args, auT=auT3, auC=cls3, mode='original', version=3)
+    load_model(args=args, auT=auT3, auC=cls3, version=3)
     ttl_test_size = 0.
     ttl_test_curr = 0.
     auTmodel.eval()
