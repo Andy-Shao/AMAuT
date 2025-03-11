@@ -91,7 +91,6 @@ if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument('--dataset', type=str, default='speech-commands', choices=['speech-commands', 'speech-commands_v2'])
     ap.add_argument('--dataset_root_path', type=str)
-    ap.add_argument('--corrupted_data_root_path', type=str)
     ap.add_argument('--num_workers', type=int, default=16)
     ap.add_argument('--output_path', type=str, default='./result')
     ap.add_argument('--output_csv_name', type=str, default='training_records.csv')
@@ -106,11 +105,6 @@ if __name__ == '__main__':
     ap.add_argument('--original_auC2_weight_path', type=str)
     ap.add_argument('--original_auT3_weight_path', type=str)
     ap.add_argument('--original_auC3_weight_path', type=str)
-    ap.add_argument('--adapted_auT_weight_path', type=str)
-    ap.add_argument('--adapted_auC_weight_path', type=str)
-    ap.add_argument('--corruption', type=str, choices=['doing_the_dishes', 'dude_miaowing', 'exercise_bike', 'pink_noise', 'running_tap', 'white_noise', 'gaussian_noise'])
-    ap.add_argument('--severity_level', type=float, default=.0025)
-    ap.add_argument('--data_type', type=str, choices=['raw', 'final'], default='final')
 
     args = ap.parse_args()
     if args.dataset == 'speech-commands':
@@ -126,9 +120,8 @@ if __name__ == '__main__':
         os.makedirs(args.full_output_path)
     except:
         pass
-    args.meta_file_name = 'speech_commands_meta.csv'
     torch.backends.cudnn.benchmark = True
-    accu_record = pd.DataFrame(columns=['dataset', 'algorithm', 'tta-operation', 'corruption', 'accuracy', 'error', 'severity level', 'number of weight'])
+    accu_record = pd.DataFrame(columns=['dataset', 'algorithm', 'tta-operation', 'accuracy', 'error', 'number of weight'])
     
     print_argparse(args)
     ################################################################
@@ -159,19 +152,8 @@ if __name__ == '__main__':
     print('Origin')
     load_model(args=args, auT=auTmodel, auC=clsmodel, mode='original')
     accu = inference(auT=auTmodel, auC=clsmodel, data_loader=test_loader, args=args)
-    accu_record.loc[len(accu_record)] = [args.dataset, args.arch, pd.NA, pd.NA, accu, 100.0-accu, 0., num_weight]
+    accu_record.loc[len(accu_record)] = [args.dataset, args.arch, pd.NA, accu, 100.0-accu, num_weight]
     print(f'Original testing -- accuracy: {accu:.2f}%, sample size: {len(test_dataset)}')
-
-    # print('Corruption')
-    # corrupted_dataset = load_from(root_path=args.corrupted_data_root_path, index_file_name=args.meta_file_name, data_tf=tf_array)
-    # corrupted_loader = DataLoader(dataset=corrupted_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=args.num_workers)
-    # load_model(args=args, auT=auTmodel, auC=clsmodel, mode='original')
-    # accu = inference(auT=auTmodel, auC=clsmodel, data_loader=corrupted_loader, args=args)
-    # accu_record.loc[len(accu_record)] = [args.dataset, args.arch, pd.NA, args.corruption, accu, 100.-accu, args.severity_level, num_weight]
-    # print(f'Corrupted testing -- accuracy: {accu:.2f}%, sample size: {len(corrupted_dataset)}')
-
-    # Adaptation
-    # TODO
 
     print('Augmentation election inference')
     org_test_set = build_dataset(args=args, tsf=AudioPadding(max_length=sample_rate, sample_rate=sample_rate, random_shift=False), mode='test')
@@ -211,7 +193,7 @@ if __name__ == '__main__':
         auT=auTmodel, auC=clsmodel, data_loader=org_test_loader, args=args, aug1=ls, aug2=rs, no_aug=ns
     )
     print(f'Election accuracy is: {ttl_adpt_curr:.2f}%, samples size is: {len(org_test_set)}')
-    accu_record.loc[len(accu_record)] = [args.dataset, args.arch, 'Aug_elect', pd.NA, ttl_adpt_curr, 100.-ttl_adpt_curr, 0., num_weight]
+    accu_record.loc[len(accu_record)] = [args.dataset, args.arch, 'Aug_elect', ttl_adpt_curr, 100.-ttl_adpt_curr, num_weight]
 
     print('Multi-training election inference')
     auT2, cls2, _ = build_model(args=args)
@@ -239,7 +221,7 @@ if __name__ == '__main__':
         ttl_test_size += labels.shape[0]
     ttl_test_accu = ttl_test_curr / ttl_test_size * 100.
     print(f'Accuracy is: {ttl_test_accu:.2f}%, sample size is:{ttl_test_size:.0f}')
-    accu_record.loc[len(accu_record)] = [args.dataset, args.arch, 'Mlt-train_elect', pd.NA, ttl_test_accu, 100.-ttl_test_accu, 0., num_weight]
+    accu_record.loc[len(accu_record)] = [args.dataset, args.arch, 'Mlt-train_elect', ttl_test_accu, 100.-ttl_test_accu, num_weight]
 
     print('Hybrid election inference')
     ttl_test_size = 0.
@@ -262,6 +244,6 @@ if __name__ == '__main__':
         ttl_test_size += labels.shape[0]
     ttl_test_accu = ttl_test_curr / ttl_test_size * 100.
     print(f'Hybrid election accuracy is: {ttl_test_accu:.2f}%, sample size is:{ttl_test_size:.0f}')
-    accu_record.loc[len(accu_record)] = [args.dataset, args.arch, 'Hybrid_elect', pd.NA, ttl_test_accu, 100.-ttl_test_accu, 0., num_weight]
+    accu_record.loc[len(accu_record)] = [args.dataset, args.arch, 'Hybrid_elect', ttl_test_accu, 100.-ttl_test_accu, num_weight]
 
     accu_record.to_csv(relative_path(args, args.output_csv_name))

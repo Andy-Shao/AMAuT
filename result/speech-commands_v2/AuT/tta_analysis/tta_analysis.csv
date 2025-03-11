@@ -1,5 +1,5 @@
-,dataset,algorithm,tta-operation,corruption,accuracy,error,severity level,number of weight
-0,speech-commands_v2,CT,,,95.20218082689686,4.797819173103136,0.0,99129030
-1,speech-commands_v2,CT,Aug_elect,,95.41117673784643,4.588823262153568,0.0,99129030
-2,speech-commands_v2,CT,Mlt-train_elect,,95.82008178100864,4.179918218991361,0.0,99129030
-3,speech-commands_v2,CT,Hybrid_elect,,95.78373466606088,4.21626533393912,0.0,99129030
+,dataset,algorithm,tta-operation,accuracy,error,number of weight
+0,speech-commands_v2,CT,,95.19309404815994,4.806905951840065,99129030
+1,speech-commands_v2,CT,Aug_elect,95.40208995910949,4.597910040890511,99129030
+2,speech-commands_v2,CT,Mlt-train_elect,95.82008178100864,4.179918218991361,99129030
+3,speech-commands_v2,CT,Hybrid_elect,95.78373466606088,4.21626533393912,99129030
