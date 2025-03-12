@@ -20,6 +20,8 @@ def dataset_tag(dataset_name:str) -> str:
         return 'AM'
     elif dataset_name == 'AudioMNIST2':
         return 'AM2'
+    elif dataset_name == 'VocalSound':
+        return 'VS'
     else:
         raise Exception('No support')
 

@@ -1,9 +1,85 @@
 import os
 from typing import Any
+import pandas as pd
+from dataclasses import dataclass
 
 from torch.utils.data import Dataset
 import torch
 import torchaudio
+
+class VocalSound(Dataset):
+    @dataclass
+    class LabelMeta:
+        index: int
+        mid_name: str
+        display_name: str
+    @dataclass
+    class AudioMeta:
+        mid_name: str
+        file_path: str
+    def __init__(
+            self, root_path: str, mode: str, include_rate=True, data_tf:torch.nn.Module=None, label_tf:torch.nn.Module=None,
+            version:str='44k'
+    ):
+        super(VocalSound, self).__init__()
+        assert mode in ['train', 'test', 'validation']
+        assert version in ['44k', '16k']
+        self.root_path = root_path
+        self.include_rate = include_rate
+        self.data_tf = data_tf 
+        self.label_tf = label_tf
+        self.data_path = os.path.join(root_path, 'data_44k' if version == '44k' else 'audio_16k')
+        
+        self.label_dict = self.__label_dict__()
+        self.sample_list = self.__file_list__(mode=mode)
+
+    def __label_dict__(self, label_dic_file='class_labels_indices_vs.csv') -> dict[str, LabelMeta]:
+        label_indices = pd.read_csv(os.path.join(self.root_path, label_dic_file))
+        ret = {}
+        for row_id, row in label_indices.iterrows():
+            meta = self.LabelMeta(
+                index=row['index'], mid_name=row['mid'], display_name=row['display_name']
+            )
+            ret[row['mid']] = meta
+        return ret
+    
+    def __file_list__(self, mode:str) -> list[AudioMeta]:
+        import json
+        if mode == 'train':
+            config_file_name = 'tr_rev.json'
+        elif mode == 'validation':
+            config_file_name = 'val_rev.json'
+        elif mode == 'test':
+            config_file_name = 'te_rev.json'
+        else:
+            raise Exception('No support')
+        with open(os.path.join(self.root_path, 'datafiles', config_file_name), 'r') as f:
+            json_str = json.load(f)
+        cfg_infos = pd.json_normalize(json_str['data'])
+        ret = []
+        for row_id, row in cfg_infos.iterrows():
+            meta = self.AudioMeta(
+                mid_name=row['labels'], file_path=os.path.join(self.data_path, str(row['wav']).split('/')[-1])
+            )
+            ret.append(meta)
+        return ret
+
+    def __len__(self):
+        return len(self.sample_list)
+    
+    def __getitem__(self, index):
+        audioMeta = self.sample_list[index]
+        label = self.label_dict[audioMeta.mid_name].index
+        wavform, sample_rate = torchaudio.load(audioMeta.file_path)
+        if self.data_tf is not None:
+            wavform = self.data_tf(wavform)
+        if self.label_tf is not None:
+            label = self.label_tf(label)
+        
+        if self.include_rate:
+            return wavform, label, sample_rate
+        else:
+            return wavform, label
 
 class RandomSpeechCommandsDataset(Dataset):
     test_meta_file = 'rand_testing_list.txt'
