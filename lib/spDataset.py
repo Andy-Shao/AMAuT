@@ -29,6 +29,7 @@ class VocalSound(Dataset):
         self.data_tf = data_tf 
         self.label_tf = label_tf
         self.data_path = os.path.join(root_path, 'data_44k' if version == '44k' else 'audio_16k')
+        self.version = version
         
         self.label_dict = self.__label_dict__()
         self.sample_list = self.__file_list__(mode=mode)
@@ -46,11 +47,11 @@ class VocalSound(Dataset):
     def __file_list__(self, mode:str) -> list[AudioMeta]:
         import json
         if mode == 'train':
-            config_file_name = 'tr_rev.json'
+            config_file_name = 'tr_rev.json' if self.version == '44k' else 'tr.json'
         elif mode == 'validation':
-            config_file_name = 'val_rev.json'
+            config_file_name = 'val_rev.json' if self.version == '44k' else 'val.json'
         elif mode == 'test':
-            config_file_name = 'te_rev.json'
+            config_file_name = 'te_rev.json' if self.version == '44k' else 'te.json'
         else:
             raise Exception('No support')
         with open(os.path.join(self.root_path, 'datafiles', config_file_name), 'r') as f:

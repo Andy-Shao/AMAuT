@@ -75,30 +75,26 @@ if __name__ == '__main__':
         project='AuT-Train', name=f'{args.arch}-{dataset_tag(args.dataset)}', 
         mode='online' if args.wandb else 'disabled', config=args, tags=['Audio Classification', args.dataset, 'AuT'])
 
-    sample_rate=48000
-    max_length = sample_rate * 11
+    sample_rate=16000
+    max_length = sample_rate * 12
     args.n_mels=80
-    n_fft=2048
-    win_length=800
-    hop_length=590
+    n_fft=1024
+    win_length=400
+    hop_length=308
     mel_scale='slaney'
-    args.target_length=896
+    args.target_length=624
     tf_array = Components(transforms=[
         AudioPadding(sample_rate=sample_rate, random_shift=True, max_length=max_length),
         time_shift(shift_limit=.17, is_random=True, is_bidirection=True),
         a_transforms.MelSpectrogram(
             sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
             mel_scale=mel_scale
-        ), # 80 x 895
+        ), # 80 x 624
         AmplitudeToDB(top_db=80., max_out=2.),
-        MelSpectrogramPadding(target_length=args.target_length),
+        # MelSpectrogramPadding(target_length=args.target_length),
         FrequenceTokenTransformer()
     ])
-    train_dataset = VocalSound(root_path=args.dataset_root_path, mode='train', include_rate=False, data_tf=tf_array)
-    train_dataset = MergeDataset(
-        set1= train_dataset,
-        set2= VocalSound(root_path=args.dataset_root_path, mode='validation', include_rate=False, data_tf=tf_array)
-    )
+    train_dataset = VocalSound(root_path=args.dataset_root_path, mode='train', include_rate=False, data_tf=tf_array, version='16k')
     train_loader = DataLoader(dataset=train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=False, num_workers=args.num_workers)
 
     tf_array = Components(transforms=[
@@ -106,12 +102,12 @@ if __name__ == '__main__':
         a_transforms.MelSpectrogram(
             sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
             mel_scale=mel_scale
-        ), # 80 x 895
+        ), # 80 x 624
         AmplitudeToDB(top_db=80., max_out=2.),
-        MelSpectrogramPadding(target_length=args.target_length),
+        # MelSpectrogramPadding(target_length=args.target_length),
         FrequenceTokenTransformer()
     ])
-    val_dataset = VocalSound(root_path=args.dataset_root_path, mode=args.validation_mode, include_rate=False, data_tf=tf_array)
+    val_dataset = VocalSound(root_path=args.dataset_root_path, mode=args.validation_mode, include_rate=False, data_tf=tf_array, version='16k')
     val_loader = DataLoader(dataset=val_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=args.num_workers)
 
     auTmodel, clsmodel = build_model(args)
