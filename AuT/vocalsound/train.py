@@ -6,6 +6,7 @@ import wandb
 from tqdm import tqdm
 
 import torch
+from torch import optim
 from torchaudio import transforms as a_transforms
 from torch.utils.data import DataLoader
 
@@ -14,9 +15,20 @@ from lib.wavUtils import Components, AudioPadding, AmplitudeToDB, time_shift, Me
 from lib.datasets import dataset_tag, MergeDataset
 from lib.spDataset import VocalSound
 from AuT.lib.model import AudioTransform, AudioClassifier
-from AuT.speech_commands.train import lr_scheduler, build_optimizer
+from AuT.speech_commands.train import build_optimizer
 from AuT.lib.loss import CrossEntropyLabelSmooth
 from AuT.lib.config import CT_base
+
+def lr_scheduler(optimizer: torch.optim.Optimizer, epoch:int, lr_cardinality:int, gamma=10, power=0.75, lr_offset=1) -> optim.Optimizer:
+    if epoch >= lr_cardinality-lr_offset:
+        return optimizer
+    decay = (1 + gamma * epoch / lr_cardinality) ** (-power)
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = param_group['lr0'] * decay
+        param_group['weight_decay'] = 1e-3
+        param_group['momentum'] = .9
+        param_group['nestenv'] = True
+    return optimizer
 
 def build_model(args:argparse.Namespace) -> tuple[AudioTransform, AudioClassifier]:
     if args.arch_level == 'base':
@@ -45,6 +57,7 @@ if __name__ == '__main__':
     ap.add_argument('--batch_size', type=int, default=64, help='batch size')
     ap.add_argument('--lr', type=float, default=1e-2, help='learning rate')
     ap.add_argument('--lr_cardinality', type=int, default=40)
+    ap.add_argument('--lr_offset', type=int, default=1)
     ap.add_argument('--smooth', type=float, default=.1)
     ap.add_argument('--early_stop', type=int, default=-1)
     ap.add_argument('--arch', type=str, default='CT', choices=['CT', 'CTA'])
@@ -143,7 +156,7 @@ if __name__ == '__main__':
 
         learning_rate = optimizer.param_groups[0]['lr']
         if epoch % args.interval == 0:
-            lr_scheduler(optimizer=optimizer, epoch=epoch, lr_cardinality=args.lr_cardinality)
+            lr_scheduler(optimizer=optimizer, epoch=epoch, lr_cardinality=args.lr_cardinality, lr_offset=args.lr_offset)
 
         print("Validating...")
         ttl_val_size = 0.
