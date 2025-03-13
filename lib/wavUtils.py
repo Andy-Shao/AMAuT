@@ -196,8 +196,28 @@ class AudioPadding(nn.Module):
                 head = l // 2
                 tail = l - head
             x = pad(x, (head, tail), mode='constant', value=0.)
-        elif l < 0:
-            x = x[:, 0:self.max_length]
+        return x
+    
+class AudioClip(nn.Module):
+    def __init__(self, max_length:int, mode:str='head', is_random:bool=False):
+        super(AudioClip, self).__init__()
+        assert mode in ['head', 'mid', 'tail']
+        self.max_length = max_length
+        self.mode = mode
+        self.is_random = is_random
+
+    def forward(self, x:torch.Tensor) -> torch.Tensor:
+        l = x.shape[1] - self.max_length
+        if l > 0:
+            if self.is_random:
+                start = np.random.randint(low=0, high=l)
+            elif self.mode == 'head':
+                start = 0
+            elif self.mode == 'mid':
+                start = int(start/2.)
+            elif self.mode == 'tail':
+                start = l
+            x = x[:, start:start+self.max_length]
         return x
 
 class RandomPitchShift(nn.Module):

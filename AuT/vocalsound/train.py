@@ -11,8 +11,8 @@ from torchaudio import transforms as a_transforms
 from torch.utils.data import DataLoader
 
 from lib.toolkit import print_argparse, relative_path, store_model_structure_to_txt
-from lib.wavUtils import Components, AudioPadding, AmplitudeToDB, time_shift, MelSpectrogramPadding, FrequenceTokenTransformer
-from lib.datasets import dataset_tag, MergeDataset
+from lib.wavUtils import Components, AudioPadding, AmplitudeToDB, time_shift, FrequenceTokenTransformer, AudioClip
+from lib.datasets import dataset_tag
 from lib.spDataset import VocalSound
 from AuT.lib.model import AudioTransform, AudioClassifier
 from AuT.speech_commands.train import build_optimizer
@@ -98,13 +98,13 @@ if __name__ == '__main__':
     args.target_length=160
     tf_array = Components(transforms=[
         AudioPadding(sample_rate=sample_rate, random_shift=True, max_length=max_length),
+        AudioClip(max_length=max_length, mode='head', is_random=False),
         time_shift(shift_limit=.17, is_random=True, is_bidirection=True),
         a_transforms.MelSpectrogram(
             sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
             mel_scale=mel_scale
         ), # 80 x 160
         AmplitudeToDB(top_db=80., max_out=2.),
-        # MelSpectrogramPadding(target_length=args.target_length),
         FrequenceTokenTransformer()
     ])
     train_dataset = VocalSound(root_path=args.dataset_root_path, mode='train', include_rate=False, data_tf=tf_array, version='16k')
@@ -112,12 +112,12 @@ if __name__ == '__main__':
 
     tf_array = Components(transforms=[
         AudioPadding(sample_rate=sample_rate, random_shift=False, max_length=max_length),
+        AudioClip(max_length=max_length, mode='head', is_random=False),
         a_transforms.MelSpectrogram(
             sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
             mel_scale=mel_scale
         ), # 80 x 160
         AmplitudeToDB(top_db=80., max_out=2.),
-        # MelSpectrogramPadding(target_length=args.target_length),
         FrequenceTokenTransformer()
     ])
     val_dataset = VocalSound(root_path=args.dataset_root_path, mode=args.validation_mode, include_rate=False, data_tf=tf_array, version='16k')
