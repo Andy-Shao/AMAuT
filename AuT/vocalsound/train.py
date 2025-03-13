@@ -34,7 +34,7 @@ def build_model(args:argparse.Namespace) -> tuple[AudioTransform, AudioClassifie
     if args.arch_level == 'base':
         config = CT_base(class_num=args.class_num, n_mels=args.n_mels)
         config.embedding.in_shape = [args.n_mels, args.target_length]
-        config.embedding.num_layers = [6, 4, 4, 12]
+        config.embedding.num_layers = [6, 12]
         auTmodel = AudioTransform(config=config).to(device=args.device)
         clsmodel = AudioClassifier(config=config).to(device=args.device)
 
@@ -89,20 +89,20 @@ if __name__ == '__main__':
         mode='online' if args.wandb else 'disabled', config=args, tags=['Audio Classification', args.dataset, 'AuT'])
 
     sample_rate=16000
-    max_length = sample_rate * 12
+    max_length = sample_rate * 3
     args.n_mels=80
     n_fft=1024
     win_length=400
-    hop_length=308
+    hop_length=316
     mel_scale='slaney'
-    args.target_length=624
+    args.target_length=152
     tf_array = Components(transforms=[
         AudioPadding(sample_rate=sample_rate, random_shift=True, max_length=max_length),
         time_shift(shift_limit=.17, is_random=True, is_bidirection=True),
         a_transforms.MelSpectrogram(
             sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
             mel_scale=mel_scale
-        ), # 80 x 624
+        ), # 80 x 152
         AmplitudeToDB(top_db=80., max_out=2.),
         # MelSpectrogramPadding(target_length=args.target_length),
         FrequenceTokenTransformer()
@@ -115,7 +115,7 @@ if __name__ == '__main__':
         a_transforms.MelSpectrogram(
             sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
             mel_scale=mel_scale
-        ), # 80 x 624
+        ), # 80 x 152
         AmplitudeToDB(top_db=80., max_out=2.),
         # MelSpectrogramPadding(target_length=args.target_length),
         FrequenceTokenTransformer()

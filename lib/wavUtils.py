@@ -196,6 +196,8 @@ class AudioPadding(nn.Module):
                 head = l // 2
                 tail = l - head
             x = pad(x, (head, tail), mode='constant', value=0.)
+        elif l < 0:
+            x = x[:, 0:self.max_length]
         return x
 
 class RandomPitchShift(nn.Module):
