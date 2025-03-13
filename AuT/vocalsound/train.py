@@ -93,16 +93,16 @@ if __name__ == '__main__':
     args.n_mels=80
     n_fft=1024
     win_length=400
-    hop_length=316
+    hop_length=301
     mel_scale='slaney'
-    args.target_length=152
+    args.target_length=160
     tf_array = Components(transforms=[
         AudioPadding(sample_rate=sample_rate, random_shift=True, max_length=max_length),
         time_shift(shift_limit=.17, is_random=True, is_bidirection=True),
         a_transforms.MelSpectrogram(
             sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
             mel_scale=mel_scale
-        ), # 80 x 152
+        ), # 80 x 160
         AmplitudeToDB(top_db=80., max_out=2.),
         # MelSpectrogramPadding(target_length=args.target_length),
         FrequenceTokenTransformer()
@@ -115,7 +115,7 @@ if __name__ == '__main__':
         a_transforms.MelSpectrogram(
             sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
             mel_scale=mel_scale
-        ), # 80 x 152
+        ), # 80 x 160
         AmplitudeToDB(top_db=80., max_out=2.),
         # MelSpectrogramPadding(target_length=args.target_length),
         FrequenceTokenTransformer()
