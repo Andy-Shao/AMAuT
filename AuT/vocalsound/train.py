@@ -165,7 +165,7 @@ if __name__ == '__main__':
     args.target_length=160
     tf_array = Components(transforms=[
         AudioPadding(sample_rate=sample_rate, random_shift=True, max_length=max_length),
-        AudioClip(max_length=max_length, mode='head', is_random=False),
+        AudioClip(max_length=max_length, is_random=True),
         time_shift(shift_limit=.17, is_random=True, is_bidirection=True),
         a_transforms.MelSpectrogram(
             sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
