@@ -19,6 +19,72 @@ from AuT.speech_commands.train import build_optimizer
 from AuT.lib.loss import CrossEntropyLabelSmooth
 from AuT.lib.config import CT_base
 
+def training(
+        args:argparse.Namespace, train_loader:DataLoader, auTmodel:AudioTransform, clsmodel:AudioClassifier, 
+        loss_fn:torch.nn.Module, optimizer:optim.Optimizer, val_loader:DataLoader
+    ) -> bool:
+    max_accu = 0.
+    for epoch in range(args.max_epoch):
+        print(f"Epoch {epoch+1}/{args.max_epoch}")
+
+        print("Training...")
+        ttl_train_size = 0.
+        ttl_train_corr = 0.
+        ttl_train_loss = 0.
+        auTmodel.train()
+        clsmodel.train()
+        for features, labels in tqdm(train_loader):
+            features, labels = features.to(args.device), labels.to(args.device)
+
+            optimizer.zero_grad()
+            outputs, _ = clsmodel(auTmodel(features))
+            loss = loss_fn(outputs, labels)
+            loss.backward()
+            optimizer.step()
+
+            ttl_train_size += labels.shape[0]
+            _, preds = torch.max(outputs.detach(), dim=1)
+            ttl_train_corr += (preds == labels).sum().cpu().item()
+            ttl_train_loss += loss.cpu().item()
+        print(f'Training size:{ttl_train_size:.0f}, accuracy:{ttl_train_corr/ttl_train_size * 100.:.2f}%')
+
+        learning_rate = optimizer.param_groups[0]['lr']
+        if epoch % args.interval == 0:
+            lr_scheduler(optimizer=optimizer, epoch=epoch, lr_cardinality=args.lr_cardinality, lr_offset=args.lr_offset)
+
+        print("Validating...")
+        ttl_val_size = 0.
+        ttl_val_corr = 0.
+        auTmodel.eval()
+        clsmodel.eval()
+        for features, labels in tqdm(val_loader):
+            features, labels = features.to(args.device), labels.to(args.device)
+            with torch.no_grad():
+                attens = auTmodel(features)
+                outputs, _ = clsmodel(attens)
+                _, preds = torch.max(outputs.detach(), dim=1)
+            ttl_val_size += labels.shape[0]
+            ttl_val_corr += (preds == labels).sum().cpu().item()
+        ttl_val_accu = ttl_val_corr/ttl_val_size * 100.
+        print(f'Validation size:{ttl_val_size:.0f}, accuracy:{ttl_val_accu:.2f}%')
+        if epoch == 0 and ttl_val_accu < args.accu_threshold:
+            return False
+        if ttl_val_accu >= max_accu:
+            max_accu = ttl_val_accu
+            torch.save(auTmodel.state_dict(), relative_path(args, f'{args.arch}-{dataset_tag(args.dataset)}-auT{args.file_name_suffix}.pt'))
+            torch.save(clsmodel.state_dict(), relative_path(args, f'{args.arch}-{dataset_tag(args.dataset)}-cls{args.file_name_suffix}.pt'))
+
+        wandb.log({
+            'Train/Accu': ttl_train_corr/ttl_train_size * 100.,
+            'Train/Loss': ttl_train_loss/ttl_train_size,
+            'Train/LR': learning_rate,
+            'Val/Accu': ttl_val_corr/ttl_val_size * 100.,
+        }, step=epoch, commit=True)
+
+        if args.early_stop >= 0:
+            if args.early_stop == epoch+1: exit()
+    return True
+
 def lr_scheduler(optimizer: torch.optim.Optimizer, epoch:int, lr_cardinality:int, gamma=10, power=0.75, lr_offset=1) -> optim.Optimizer:
     if epoch >= lr_cardinality-lr_offset:
         return optimizer
@@ -54,6 +120,7 @@ if __name__ == '__main__':
 
     ap.add_argument('--max_epoch', type=int, default=200, help='max epoch')
     ap.add_argument('--interval', type=int, default=1, help='interval number')
+    ap.add_argument('--accu_threshold', type=float, default=.0)
     ap.add_argument('--batch_size', type=int, default=64, help='batch size')
     ap.add_argument('--lr', type=float, default=1e-2, help='learning rate')
     ap.add_argument('--lr_cardinality', type=int, default=40)
@@ -123,67 +190,16 @@ if __name__ == '__main__':
     val_dataset = VocalSound(root_path=args.dataset_root_path, mode=args.validation_mode, include_rate=False, data_tf=tf_array, version='16k')
     val_loader = DataLoader(dataset=val_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=args.num_workers)
 
-    auTmodel, clsmodel = build_model(args)
-    store_model_structure_to_txt(model=auTmodel, output_path=relative_path(args, f'{args.arch}-{dataset_tag(args.dataset)}-auT{args.file_name_suffix}.txt'))
-    store_model_structure_to_txt(model=clsmodel, output_path=relative_path(args, f'{args.arch}-{dataset_tag(args.dataset)}-cls{args.file_name_suffix}.txt'))
-    optimizer = build_optimizer(args=args, auT=auTmodel, auC=clsmodel, auD=None)
-    loss_fn = CrossEntropyLabelSmooth(num_classes=args.class_num, use_gpu=torch.cuda.is_available(), epsilon=args.smooth)
+    while True:
+        auTmodel, clsmodel = build_model(args)
+        store_model_structure_to_txt(model=auTmodel, output_path=relative_path(args, f'{args.arch}-{dataset_tag(args.dataset)}-auT{args.file_name_suffix}.txt'))
+        store_model_structure_to_txt(model=clsmodel, output_path=relative_path(args, f'{args.arch}-{dataset_tag(args.dataset)}-cls{args.file_name_suffix}.txt'))
+        optimizer = build_optimizer(args=args, auT=auTmodel, auC=clsmodel, auD=None)
+        loss_fn = CrossEntropyLabelSmooth(num_classes=args.class_num, use_gpu=torch.cuda.is_available(), epsilon=args.smooth)
 
-    max_accu = 0.
-    for epoch in range(args.max_epoch):
-        print(f"Epoch {epoch+1}/{args.max_epoch}")
-
-        print("Training...")
-        ttl_train_size = 0.
-        ttl_train_corr = 0.
-        ttl_train_loss = 0.
-        auTmodel.train()
-        clsmodel.train()
-        for features, labels in tqdm(train_loader):
-            features, labels = features.to(args.device), labels.to(args.device)
-
-            optimizer.zero_grad()
-            outputs, _ = clsmodel(auTmodel(features))
-            loss = loss_fn(outputs, labels)
-            loss.backward()
-            optimizer.step()
-
-            ttl_train_size += labels.shape[0]
-            _, preds = torch.max(outputs.detach(), dim=1)
-            ttl_train_corr += (preds == labels).sum().cpu().item()
-            ttl_train_loss += loss.cpu().item()
-        print(f'Training size:{ttl_train_size:.0f}, accuracy:{ttl_train_corr/ttl_train_size * 100.:.2f}%')
-
-        learning_rate = optimizer.param_groups[0]['lr']
-        if epoch % args.interval == 0:
-            lr_scheduler(optimizer=optimizer, epoch=epoch, lr_cardinality=args.lr_cardinality, lr_offset=args.lr_offset)
-
-        print("Validating...")
-        ttl_val_size = 0.
-        ttl_val_corr = 0.
-        auTmodel.eval()
-        clsmodel.eval()
-        for features, labels in tqdm(val_loader):
-            features, labels = features.to(args.device), labels.to(args.device)
-            with torch.no_grad():
-                attens = auTmodel(features)
-                outputs, _ = clsmodel(attens)
-                _, preds = torch.max(outputs.detach(), dim=1)
-            ttl_val_size += labels.shape[0]
-            ttl_val_corr += (preds == labels).sum().cpu().item()
-        ttl_val_accu = ttl_val_corr/ttl_val_size * 100.
-        print(f'Validation size:{ttl_val_size:.0f}, accuracy:{ttl_val_accu:.2f}%')
-        if ttl_val_accu >= max_accu:
-            max_accu = ttl_val_accu
-            torch.save(auTmodel.state_dict(), relative_path(args, f'{args.arch}-{dataset_tag(args.dataset)}-auT{args.file_name_suffix}.pt'))
-            torch.save(clsmodel.state_dict(), relative_path(args, f'{args.arch}-{dataset_tag(args.dataset)}-cls{args.file_name_suffix}.pt'))
-
-        wandb.log({
-            'Train/Accu': ttl_train_corr/ttl_train_size * 100.,
-            'Train/Loss': ttl_train_loss/ttl_train_size,
-            'Train/LR': learning_rate,
-            'Val/Accu': ttl_val_corr/ttl_val_size * 100.,
-        }, step=epoch, commit=True)
-
-        if args.early_stop >= 0:
-            if args.early_stop == epoch+1: exit()
+        is_finished = training(
+            args=args, train_loader=train_loader, auTmodel=auTmodel, clsmodel=clsmodel, loss_fn=loss_fn,
+            optimizer=optimizer, val_loader=val_loader
+        )
+        if is_finished:
+            break
