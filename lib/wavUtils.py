@@ -214,7 +214,7 @@ class AudioClip(nn.Module):
             elif self.mode == 'head':
                 start = 0
             elif self.mode == 'mid':
-                start = int(start/2.)
+                start = int(l/2.)
             elif self.mode == 'tail':
                 start = l
             x = x[:, start:start+self.max_length]
