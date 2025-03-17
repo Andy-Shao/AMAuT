@@ -71,15 +71,6 @@ from unrecognized ones.
 + Sample data shape: [1, 5945 - 16000]
 + Class Number: 30
 
-|background noise type|sample data shape|sample rate|
-|--|--|--|
-|doing_the_dishes|[1, 1522930]|16000|
-|dude_miaowing|[1, 988891]|16000|
-|exercise_bike|[1, 980062]|16000|
-|pink_noise|[1, 960000]|16000|
-|running_tap|[1, 978488]|16000|
-|white_noise|[1, 960000]|16000|
-
 [Speech Commands Dataset Link](https://research.google/blog/launching-the-speech-commands-dataset/)<br/>
 [Dataset Download Link](http://download.tensorflow.org/data/speech_commands_v0.01.tar.gz)
 
@@ -92,30 +83,6 @@ Add five new words in the Dataset, such as, 'backward', 'forward', 'follow', 'le
   
 [Speech Commands Dataset Link](https://research.google/blog/launching-the-speech-commands-dataset/)<br/>
 [Pytorch Document](https://pytorch.org/audio/main/generated/torchaudio.datasets.SPEECHCOMMANDS.html)
-  
-<!-- ### ReefSet v1.0
-This dataset includes audio clips from coral reef habitats across 16 datasets and 11 countries. The dataset includes 
-57074 samples and each sample is 1.88 seconds in length. 
-
-+ Sample size: 57074
-+ Sampling rate: 16000
-+ Sampling data shape: ?
-+ Class Number: 37
-
-[ReefSet Official Website Linke](https://zenodo.org/records/11071202)<br/>
-[Dataset Download Link](https://zenodo.org/records/11071202/files/ReefSet_v1.0.zip?download=1) -->
-
-<!-- ### VGG-Sound
-VGG-Sound is an audio-visual correspondent dataset consisting of short clips of audio sounds, extracted from videos uploaded to YouTube
-
-+ Sample size: 199467 (train: 183730, test: 15446)
-+ Sampling rate: 48000
-+ Sample data shape: ?
-
-[VGG-Sound Official Website Link](https://www.robots.ox.ac.uk/~vgg/data/vggsound/)<br/>
-[csv File Link](http://www.robots.ox.ac.uk/~vgg/data/vggsound/vggsound.csv)<br/>
-[VGG-Sound Github](https://github.com/hche11/VGGSound/tree/master)<br/>
-[Hugging Face Image](https://huggingface.co/datasets/Loie/VGGSound/tree/main) -->
 
 ## Code Reference
 + [CoNMix](https://github.com/vcl-iisc/CoNMix/tree/master)
