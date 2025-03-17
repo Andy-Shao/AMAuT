@@ -42,7 +42,7 @@ cd Audio-Transform
 ssh AuT/script/speech-commands/train.sh
 ```
 
-### analysis
+### Analysis
 ```shell
 ssh AuT/script/speech-commands/tta_analysis.sh
 ```
