@@ -54,7 +54,7 @@ This repository contains code and data used in Interpreting and Explaining Deep 
 
 + sample size: 30000
 + sample rate: 48000
-+ sample data shape: [1, 14073 - 47998]
+<!-- + sample data shape: [1, 14073 - 47998] -->
   
 [Audio MNIST Link](https://github.com/soerenab/AudioMNIST/tree/master)
 
@@ -68,7 +68,7 @@ from unrecognized ones.
 
 + Sample size: 64721 (train: 51088, test: 6835, validation: 6798)
 + Sampling rate: 16000
-+ Sample data shape: [1, 5945 - 16000]
+<!-- + Sample data shape: [1, 5945 - 16000] -->
 + Class Number: 30
 
 [Speech Commands Dataset Link](https://research.google/blog/launching-the-speech-commands-dataset/)<br/>
