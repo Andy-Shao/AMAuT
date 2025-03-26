@@ -10,9 +10,12 @@ from torch.utils.data import DataLoader
 from lib.toolkit import print_argparse, relative_path, count_ttl_params
 from lib.wavUtils import Components, AudioPadding, AmplitudeToDB, MelSpectrogramPadding, FrequenceTokenTransformer, time_shift
 from lib.wavUtils import BatchTransform
-from lib.datasets import load_from
 from AuT.speech_commands.train import build_dataset, build_model
 from AuT.lib.model import AudioTransform, AudioClassifier
+
+def merge_outs(o1:torch.Tensor, o2:torch.Tensor, o3:torch.Tensor) -> torch.Tensor:
+    from torch.nn import functional as F
+    return (F.softmax(o1, dim=1) + F.softmax(o2, dim=1) + F.softmax(o3, dim=1)) / 3.
 
 def aug_inference(
     auT:AudioTransform, auC:AudioClassifier, args:argparse.Namespace, aug1:torch.nn.Module, 
@@ -27,7 +30,7 @@ def aug_inference(
         o2, _ = auC(auT(ins2))
         o3, _ = auC(auT(ins3))
         
-    return (o1 + o2 + o3)/3.
+    return merge_outs(o1, o2, o3)
 
 def elect_inference(
     auT:AudioTransform, auC:AudioClassifier, data_loader:DataLoader, args:argparse.Namespace, aug1:torch.nn.Module, 
@@ -47,7 +50,7 @@ def elect_inference(
             o1, _ = auC(auT(ins1))
             o2, _ = auC(auT(ins2))
             o3, _ = auC(auT(ins3))
-            outputs = (o1 + o2 + o3)/3.
+            outputs = merge_outs(o1, o2, o3)
             _, preds = torch.max(outputs.detach(), dim=1)
         ttl_corr += (preds == labels).sum().cpu().item()
         ttl_size += labels.shape[0]
@@ -212,7 +215,7 @@ if __name__ == '__main__':
             o1, _ = clsmodel(auTmodel(inputs))
             o2, _ = cls2(auT2(inputs))
             o3, _ = cls3(auT3(inputs))
-            o = (o1 + o2 + o3)/3.0
+            o = merge_outs(o1, o2, o3)
             _, preds = torch.max(o.detach(), dim=1)
         ttl_test_curr += (preds == labels).sum().cpu().item()
         ttl_test_size += labels.shape[0]
@@ -235,7 +238,7 @@ if __name__ == '__main__':
         o1 = aug_inference(auT=auTmodel, auC=clsmodel, args=args, aug1=ls, aug2=rs, no_aug=ns, raw_input=inputs)
         o2 = aug_inference(auT=auT2, auC=cls2, args=args, aug1=ls, aug2=rs, no_aug=ns, raw_input=inputs)
         o3 = aug_inference(auT=auT3, auC=cls3, args=args, aug1=ls, aug2=rs, no_aug=ns, raw_input=inputs)
-        o = (o1 + o2 + o3)/3.0
+        o = merge_outs(o1, o2, o3)
         _, preds = torch.max(o.detach(), dim=1)
         ttl_test_curr += (preds == labels).sum().cpu().item()
         ttl_test_size += labels.shape[0]
