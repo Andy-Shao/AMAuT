@@ -84,6 +84,16 @@ Add five new words in the Dataset, such as, 'backward', 'forward', 'follow', 'le
 [Speech Commands Dataset Link](https://research.google/blog/launching-the-speech-commands-dataset/)<br/>
 [Pytorch Document](https://pytorch.org/audio/main/generated/torchaudio.datasets.SPEECHCOMMANDS.html)
 
+### VocalSound
+VocalSound is a free dataset consisting of 21,024 crowdsourced recordings of laughter, sighs, coughs, throat clearing, sneezes, and sniffs from 3,365 unique subjects. The VocalSound dataset also contains meta-information such as speaker age, gender, native language, country, and health condition.
+
+20977 (Train: 15531, validation: 1855, test: 3591)
+[VocalSound DatasetLink](https://sls.csail.mit.edu/downloads/vocalsound/)
+Download command:
+```shell
+wget -O vocalsound_16k.zip https://www.dropbox.com/s/c5ace70qh1vbyzb/vs_release_16k.zip?dl=1
+```
+
 ## Code Reference
 + [CoNMix](https://github.com/vcl-iisc/CoNMix/tree/master)
 + [TransUNet](https://github.com/Beckschen/TransUNet)
