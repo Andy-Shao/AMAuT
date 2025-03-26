@@ -12,7 +12,7 @@ from lib.wavUtils import Components, AudioPadding, AmplitudeToDB, MelSpectrogram
 from lib.wavUtils import BatchTransform, time_shift
 from lib.spDataset import AudioMINST
 from AuT.audiomnist.train import build_model
-from AuT.speech_commands.tta_analysis import inference, elect_inference, load_model, aug_inference
+from AuT.speech_commands.tta_analysis import inference, elect_inference, load_model, aug_inference, merge_outs
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
@@ -151,7 +151,7 @@ if __name__ == '__main__':
             o1, _ = clsmodel(auTmodel(inputs))
             o2, _ = cls2(auT2(inputs))
             o3, _ = cls3(auT3(inputs))
-            o = (o1 + o2 + o3)/3.0
+            o = merge_outs(o1, o2, o3)
             _, preds = torch.max(o.detach(), dim=1)
         ttl_test_curr += (preds == labels).sum().cpu().item()
         ttl_test_size += labels.shape[0]
@@ -174,7 +174,7 @@ if __name__ == '__main__':
         o1 = aug_inference(auT=auTmodel, auC=clsmodel, args=args, aug1=ls, aug2=rs, no_aug=ns, raw_input=inputs)
         o2 = aug_inference(auT=auT2, auC=cls2, args=args, aug1=ls, aug2=rs, no_aug=ns, raw_input=inputs)
         o3 = aug_inference(auT=auT3, auC=cls3, args=args, aug1=ls, aug2=rs, no_aug=ns, raw_input=inputs)
-        o = (o1 + o2 + o3)/3.0
+        o = merge_outs(o1, o2, o3)
         _, preds = torch.max(o.detach(), dim=1)
         ttl_test_curr += (preds == labels).sum().cpu().item()
         ttl_test_size += labels.shape[0]
