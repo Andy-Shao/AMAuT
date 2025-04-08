@@ -3,8 +3,10 @@ from torch import nn
 
 class RMSNorm(nn.Module):
     """
-    " Copyright: https://github.com/meta-llama/llama.git
-    " https://github.com/meta-llama/llama/blob/main/llama/model.py#L34
+    Copyright: https://github.com/meta-llama/llama.git
+    https://github.com/meta-llama/llama/blob/main/llama/model.py#L34
+     
+    Original research: Root Mean Square Layer Normalization (https://arxiv.org/pdf/1910.07467)
     """
     def __init__(self, dim:int, eps:float=1e-6):
         super(RMSNorm, self).__init__()
