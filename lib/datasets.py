@@ -22,6 +22,8 @@ def dataset_tag(dataset_name:str) -> str:
         return 'AM2'
     elif dataset_name == 'VocalSound':
         return 'VS'
+    elif dataset_name == 'CochlScene':
+        return 'CS'
     else:
         raise Exception('No support')
 
