@@ -22,7 +22,9 @@ def build_model(args:argparse.Namespace) -> tuple[FCETransform, FCEClassifier]:
     if args.arch_level == 'base':
         config = CT_base(class_num=args.class_num, n_mels=args.n_mels)
         config.embedding.in_shape = [args.n_mels, args.target_length]
-        config.embedding.num_layers = [6, 8]
+        config.embedding.num_layers = [6, 4, 12]
+        config.embedding.width = 64
+        config.embedding.embed_num = 92
         auTmodel = FCETransform(config=config).to(device=args.device)
         clsmodel = FCEClassifier(config=config).to(device=args.device)
 
@@ -76,7 +78,7 @@ if __name__ == '__main__':
         mode='online' if args.wandb else 'disabled', config=args, tags=['Audio Classification', args.dataset, 'AuT'])
 
     sample_rate=44100
-    args.n_mels=128
+    args.n_mels=64
     n_fft=2048
     win_length=800
     hop_length=300

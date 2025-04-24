@@ -27,12 +27,12 @@ class FCETransform(nn.Module):
         embed_size = config.embedding['embed_size']
         self.embedding = FCEmbedding(
             num_channels=config.embedding['channel_num'], embed_size=embed_size,
-            num_layers=config.embedding['num_layers']
+            num_layers=config.embedding['num_layers'], width=config.embedding['width']
         )
         self.tf_norm = nn.LayerNorm(embed_size, eps=1e-6)
         self.layers = nn.ModuleList([AttentionBlock(config) for _ in range(config.transform['layer_num'])])
         self.drop_out = nn.Dropout(p=config.embedding['marsked_rate'])
-        self.pos_embed = nn.Parameter(torch.zeros(1, 184+2, embed_size))
+        self.pos_embed = nn.Parameter(torch.zeros(1, config.embedding['embed_num']+2, embed_size))
         torch.nn.init.trunc_normal_(self.pos_embed, std=.02)
         self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_size))
         torch.nn.init.trunc_normal_(self.cls_token, std=.02)
