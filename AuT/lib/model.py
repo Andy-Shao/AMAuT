@@ -4,7 +4,57 @@ import torch
 import torch.nn as nn
 from ml_collections import  ConfigDict
 
-from .embed import Embedding as RestEmbedding
+from .embed import Embedding as RestEmbedding, FCEmbedding
+
+class FCEClassifier(nn.Module):
+    def __init__(self, config:ConfigDict) -> None:
+        super(FCEClassifier, self).__init__()
+        embed_size = config.embedding['embed_size']
+
+        self.norm = nn.LayerNorm(normalized_shape=embed_size, eps=1e-6)
+        self.fc = nn.Linear(in_features=embed_size, out_features=config.classifier['class_num'])
+
+    def forward(self, x:torch.Tensor) -> torch.Tensor:
+        x = torch.mean(x, dim=1)
+        x = self.norm(x)
+        x = self.fc(x)
+
+        return x
+
+class FCETransform(nn.Module):
+    def __init__(self, config:ConfigDict) -> None:
+        super(FCETransform, self).__init__()
+        embed_size = config.embedding['embed_size']
+        self.embedding = FCEmbedding(
+            num_channels=config.embedding['channel_num'], embed_size=embed_size,
+            num_layers=config.embedding['num_layers']
+        )
+        self.tf_norm = nn.LayerNorm(embed_size, eps=1e-6)
+        self.layers = nn.ModuleList([AttentionBlock(config) for _ in range(config.transform['layer_num'])])
+        self.drop_out = nn.Dropout(p=config.embedding['marsked_rate'])
+        self.pos_embed = nn.Parameter(torch.zeros(1, 184+2, embed_size))
+        torch.nn.init.trunc_normal_(self.pos_embed, std=.02)
+        self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_size))
+        torch.nn.init.trunc_normal_(self.cls_token, std=.02)
+        self.dis_token = nn.Parameter(torch.zeros(1, 1, embed_size))
+        torch.nn.init.trunc_normal_(self.dis_token, std=.02)
+
+    def forward(self, x:torch.Tensor):
+        batch_size, token_num, token_len = x.size()
+        x = self.embedding(x)
+        cls_tokens = self.cls_token.repeat([batch_size, 1, 1])
+        dis_tokens = self.dis_token.repeat([batch_size, 1, 1])
+        x = torch.cat([cls_tokens, dis_tokens, x], dim=1)
+        x = x + self.pos_embed
+        x = self.drop_out(x)
+
+        for layer in self.layers:
+            x = layer(x)
+        x = self.tf_norm(x)
+
+        tokens = x[:, 0:2, :]
+
+        return x, tokens
 
 def init_weights(m: nn.Module):
     class_name = m.__class__.__name__

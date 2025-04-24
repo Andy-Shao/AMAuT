@@ -4,6 +4,20 @@ import random
 import torch 
 import torch.nn as nn
 
+class FCEmbedding(nn.Module):
+    def __init__(self, num_channels:int, embed_size:int, width=128, num_layers=[6,8]) -> None:
+        super(FCEmbedding, self).__init__()
+        ng = 32
+        self.restnet = ResNetCT(cin=num_channels, width=width, ng=ng, num_layers=num_layers)
+        self.patch_embedding = nn.Conv1d(in_channels=width*(2**(1+len(num_layers))), out_channels=embed_size, kernel_size=1, stride=1, padding=0)
+
+    def forward(self, x:torch.Tensor):
+        x = self.restnet(x)
+        x = self.patch_embedding(x)
+        x = x.transpose(2, 1)
+
+        return x
+
 class Embedding(nn.Module):
     def __init__(self, num_channels:int, embed_size:int, marsked_rate:float, width=128, num_layers=[6,8], in_shape=[80,104], arch:str='CT') -> None:
         super(Embedding, self).__init__()

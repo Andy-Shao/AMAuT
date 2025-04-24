@@ -13,18 +13,18 @@ from lib.toolkit import print_argparse, relative_path, store_model_structure_to_
 from lib.wavUtils import Components, AudioPadding, AmplitudeToDB, time_shift, MelSpectrogramPadding, FrequenceTokenTransformer
 from lib.datasets import dataset_tag
 from lib.acousticDataset import CochlScene
-from AuT.lib.model import AudioTransform, AudioClassifier
+from AuT.lib.model import FCETransform, FCEClassifier
 from AuT.speech_commands.train import lr_scheduler, build_optimizer
 from AuT.lib.loss import CrossEntropyLabelSmooth
 from AuT.lib.config import CT_base
 
-def build_model(args:argparse.Namespace) -> tuple[AudioTransform, AudioClassifier]:
+def build_model(args:argparse.Namespace) -> tuple[FCETransform, FCEClassifier]:
     if args.arch_level == 'base':
         config = CT_base(class_num=args.class_num, n_mels=args.n_mels)
         config.embedding.in_shape = [args.n_mels, args.target_length]
-        config.embedding.num_layers = [6, 4, 4, 12]
-        auTmodel = AudioTransform(config=config).to(device=args.device)
-        clsmodel = AudioClassifier(config=config).to(device=args.device)
+        config.embedding.num_layers = [6, 8]
+        auTmodel = FCETransform(config=config).to(device=args.device)
+        clsmodel = FCEClassifier(config=config).to(device=args.device)
 
     return auTmodel, clsmodel
 
@@ -47,7 +47,7 @@ if __name__ == '__main__':
     ap.add_argument('--lr_cardinality', type=int, default=40)
     ap.add_argument('--smooth', type=float, default=.1)
     ap.add_argument('--early_stop', type=int, default=-1)
-    ap.add_argument('--arch', type=str, default='CT', choices=['CT', 'CTA'])
+    ap.add_argument('--arch', type=str, default='CT', choices=['CT', 'FCE'])
     ap.add_argument('--arch_level', type=str, default='base')
 
     args = ap.parse_args()
@@ -131,7 +131,7 @@ if __name__ == '__main__':
             features, labels = features.to(args.device), labels.to(args.device)
 
             optimizer.zero_grad()
-            outputs, _ = clsmodel(auTmodel(features))
+            outputs = clsmodel(auTmodel(features)[1])
             loss = loss_fn(outputs, labels)
             loss.backward()
             optimizer.step()
@@ -154,8 +154,7 @@ if __name__ == '__main__':
         for features, labels in tqdm(val_loader):
             features, labels = features.to(args.device), labels.to(args.device)
             with torch.no_grad():
-                attens = auTmodel(features)
-                outputs, _ = clsmodel(attens)
+                outputs = clsmodel(auTmodel(features)[1])
                 _, preds = torch.max(outputs.detach(), dim=1)
             ttl_val_size += labels.shape[0]
             ttl_val_corr += (preds == labels).sum().cpu().item()
