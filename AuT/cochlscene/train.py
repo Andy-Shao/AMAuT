@@ -11,7 +11,8 @@ from torch.utils.data import DataLoader
 
 from lib.toolkit import print_argparse, relative_path, store_model_structure_to_txt
 from lib.wavUtils import Components, AudioPadding, AmplitudeToDB, time_shift, MelSpectrogramPadding, FrequenceTokenTransformer
-from lib.datasets import dataset_tag
+from lib.wavUtils import GuassianNoise
+from lib.datasets import dataset_tag, TwoTFDataset
 from lib.acousticDataset import CochlScene
 from AuT.lib.model import FCETransform, FCEClassifier
 from AuT.speech_commands.train import lr_scheduler, build_optimizer
@@ -84,19 +85,33 @@ if __name__ == '__main__':
     hop_length=512
     mel_scale='slaney'
     args.target_length=864
-    tf_array = Components(transforms=[
-        AudioPadding(sample_rate=sample_rate, random_shift=True, max_length=sample_rate*10),
-        time_shift(shift_limit=.17, is_random=True, is_bidirection=True),
-        a_transforms.MelSpectrogram(
-            sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
-            mel_scale=mel_scale
-        ), # 80 x 862
-        AmplitudeToDB(top_db=80., max_out=2.),
-        MelSpectrogramPadding(target_length=args.target_length),
-        FrequenceTokenTransformer()
-    ])
     if args.dataset == 'CochlScene':
-        train_dataset = CochlScene(root_path=args.dataset_root_path, mode='train', data_tf=tf_array, include_rate=False)
+        train_dataset = CochlScene(root_path=args.dataset_root_path, mode='train', include_rate=False)
+    train_dataset = TwoTFDataset(
+        dataset=train_dataset,
+        tf1=Components(transforms=[
+            AudioPadding(sample_rate=sample_rate, random_shift=True, max_length=sample_rate*10),
+            time_shift(shift_limit=.17, is_random=True, is_bidirection=True),
+            a_transforms.MelSpectrogram(
+                sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
+                mel_scale=mel_scale
+            ), # 80 x 862
+            AmplitudeToDB(top_db=80., max_out=2.),
+            MelSpectrogramPadding(target_length=args.target_length),
+            FrequenceTokenTransformer()
+        ]),
+        tf2=Components(transforms=[
+            GuassianNoise(noise_level=.015),
+            AudioPadding(sample_rate=sample_rate, random_shift=True, max_length=sample_rate*10),
+            a_transforms.MelSpectrogram(
+                sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
+                mel_scale=mel_scale
+            ), # 80 x 862
+            AmplitudeToDB(top_db=80., max_out=2.),
+            MelSpectrogramPadding(target_length=args.target_length),
+            FrequenceTokenTransformer()
+        ])
+    )
     train_loader = DataLoader(dataset=train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=False, num_workers=args.num_workers)
 
     tf_array = Components(transforms=[
@@ -129,12 +144,13 @@ if __name__ == '__main__':
         ttl_train_loss = 0.
         auTmodel.train()
         clsmodel.train()
-        for features, labels in tqdm(train_loader):
-            features, labels = features.to(args.device), labels.to(args.device)
+        for org_fs, aug_fs, labels in tqdm(train_loader):
+            org_fs, aug_fs, labels = org_fs.to(args.device), aug_fs.to(args.device), labels.to(args.device)
 
             optimizer.zero_grad()
-            outputs = clsmodel(auTmodel(features)[1])
-            loss = loss_fn(outputs, labels)
+            outputs = clsmodel(auTmodel(org_fs)[1])
+            outputs2 = clsmodel(auTmodel(aug_fs)[1])
+            loss = loss_fn(outputs, labels) + loss_fn(outputs2, labels)
             loss.backward()
             optimizer.step()
 

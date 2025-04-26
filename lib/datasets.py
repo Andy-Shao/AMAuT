@@ -146,6 +146,27 @@ class TwoTFDataset(Dataset):
         if self.tf2 is not None:
             x2 = self.tf2(x2)
         return x1, x2, label
+
+class MultiTFDataset(Dataset):
+    def __init__(self, dataset:Dataset, tfs:list[nn.Module]):
+        super(MultiTFDataset, self).__init__()
+        assert tfs is not None, 'No support'
+        self.dataset = dataset
+        self.tfs = tfs
+
+    def __len__(self):
+        return len(self.dataset)
+    
+    def __getitem__(self, index):
+        item, label = self.dataset[index]
+        ret = []
+        for tf in self.tfs:
+            x = item.clone()
+            if tf is not None:
+                x = tf(x)
+            ret.append(x)
+        ret.append(label)
+        return tuple(ret)
     
 class FewShotDataset(Dataset):
     def __init__(
