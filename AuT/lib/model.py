@@ -11,11 +11,12 @@ class FCEClassifier(nn.Module):
         super(FCEClassifier, self).__init__()
         embed_size = config.embedding['embed_size']
 
+        self.merge = nn.Conv1d(in_channels=2, out_channels=1, kernel_size=15, stride=1, padding=7)
         self.norm = nn.LayerNorm(normalized_shape=embed_size, eps=1e-6)
         self.fc = nn.Linear(in_features=embed_size, out_features=config.classifier['class_num'])
 
     def forward(self, x:torch.Tensor) -> torch.Tensor:
-        x = torch.mean(x, dim=1)
+        x = torch.squeeze(self.merge(x), dim=1)
         x = self.norm(x)
         x = self.fc(x)
 
@@ -36,15 +37,15 @@ class FCETransform(nn.Module):
         torch.nn.init.trunc_normal_(self.pos_embed, std=.02)
         self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_size))
         torch.nn.init.trunc_normal_(self.cls_token, std=.02)
-        self.dis_token = nn.Parameter(torch.zeros(1, 1, embed_size))
-        torch.nn.init.trunc_normal_(self.dis_token, std=.02)
+        self.tail_token = nn.Parameter(torch.zeros(1, 1, embed_size))
+        torch.nn.init.trunc_normal_(self.tail_token, std=.02)
 
     def forward(self, x:torch.Tensor):
         batch_size, token_num, token_len = x.size()
         x = self.embedding(x)
         cls_tokens = self.cls_token.repeat([batch_size, 1, 1])
-        dis_tokens = self.dis_token.repeat([batch_size, 1, 1])
-        x = torch.cat([cls_tokens, dis_tokens, x], dim=1)
+        tail_tokens = self.tail_token.repeat([batch_size, 1, 1])
+        x = torch.cat([cls_tokens, x, tail_tokens], dim=1)
         x = x + self.pos_embed
         x = self.drop_out(x)
 
@@ -52,7 +53,7 @@ class FCETransform(nn.Module):
             x = layer(x)
         x = self.tf_norm(x)
 
-        tokens = x[:, 0:2, :]
+        tokens = torch.cat([x[:, :1, :], x[:, -1:, :]], dim=1)
 
         return x, tokens
 
