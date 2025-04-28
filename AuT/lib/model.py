@@ -11,7 +11,7 @@ class FCEClassifier(nn.Module):
         super(FCEClassifier, self).__init__()
         embed_size = config.embedding['embed_size']
 
-        self.merge = nn.Conv1d(in_channels=2, out_channels=1, kernel_size=15, stride=1, padding=7)
+        self.merge = nn.Conv1d(in_channels=config.classifier['in_embed_num'], out_channels=1, kernel_size=15, stride=1, padding=7)
         self.norm = nn.LayerNorm(normalized_shape=embed_size, eps=1e-6)
         self.fc = nn.Linear(in_features=embed_size, out_features=config.classifier['class_num'])
 

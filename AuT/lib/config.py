@@ -36,6 +36,7 @@ def CT_base(class_num:int, n_mels:int) -> ConfigDict:
     cfg.classifier.class_num = class_num
     cfg.classifier.extend_size = 2048
     cfg.classifier.convergent_size = 256
+    cfg.classifier.in_embed_num = 2
 
     cfg.embedding = ConfigDict()
     cfg.embedding.channel_num = n_mels
