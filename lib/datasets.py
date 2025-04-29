@@ -159,12 +159,10 @@ class MultiTFDataset(Dataset):
     
     def __getitem__(self, index):
         item, label = self.dataset[index]
-        ret = []
-        for tf in self.tfs:
-            x = item.clone()
+        ret = [item.clone() for _ in range(len(self.tfs))]
+        for i, tf in enumerate(self.tfs):
             if tf is not None:
-                x = tf(x)
-            ret.append(x)
+                ret[i] = tf(ret[i])
         ret.append(label)
         return tuple(ret)
     

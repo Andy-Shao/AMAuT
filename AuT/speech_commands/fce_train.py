@@ -33,7 +33,7 @@ def build_model(args:argparse.Namespace) -> tuple[FCETransform, FCEClassifier]:
         config.embedding.num_layers = [6, 12]
         config.embedding.width = 128
         config.embedding.embed_num = 13
-        config.classifier.in_embed_num = 2 + 13
+        config.classifier.in_embed_num = 2
         auTmodel = FCETransform(config=config).to(device=args.device)
         clsmodel = FCEClassifier(config=config).to(device=args.device)
 
@@ -101,6 +101,17 @@ if __name__ == '__main__':
         dataset=train_dataset,
         tfs=[
             Components(transforms=[
+                AudioPadding(sample_rate=sample_rate, random_shift=True, max_length=sample_rate),
+                time_shift(shift_limit=.17, is_random=True, is_bidirection=True),
+                a_transforms.MelSpectrogram(
+                    sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
+                    mel_scale=mel_scale
+                ), # 80 x 104
+                AmplitudeToDB(top_db=80., max_out=2.),
+                MelSpectrogramPadding(target_length=args.target_length),
+                FrequenceTokenTransformer()
+            ]),
+            Components(transforms=[
                 GuassianNoise(noise_level=.015),
                 AudioPadding(sample_rate=sample_rate, random_shift=True, max_length=sample_rate),
                 a_transforms.MelSpectrogram(
@@ -122,17 +133,6 @@ if __name__ == '__main__':
             #     MelSpectrogramPadding(target_length=args.target_length),
             #     FrequenceTokenTransformer()
             # ]),
-            Components(transforms=[
-                AudioPadding(sample_rate=sample_rate, random_shift=True, max_length=sample_rate),
-                time_shift(shift_limit=.17, is_random=True, is_bidirection=True),
-                a_transforms.MelSpectrogram(
-                    sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
-                    mel_scale=mel_scale
-                ), # 80 x 104
-                AmplitudeToDB(top_db=80., max_out=2.),
-                MelSpectrogramPadding(target_length=args.target_length),
-                FrequenceTokenTransformer()
-            ]),
         ]
     )
     train_loader = DataLoader(
