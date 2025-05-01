@@ -11,13 +11,21 @@ from torch.utils.data import DataLoader
 
 from lib.toolkit import print_argparse, relative_path, store_model_structure_to_txt
 from lib.wavUtils import Components, AudioPadding, AmplitudeToDB, time_shift, MelSpectrogramPadding, FrequenceTokenTransformer
-from lib.wavUtils import GuassianNoise
+from lib.wavUtils import GuassianNoise, BackgroundNoise
 from lib.datasets import dataset_tag, MultiTFDataset
 from lib.acousticDataset import CochlScene
+from lib.spDataset import BackgroundNoiseDataset
 from AuT.lib.model import FCETransform, FCEClassifier
 from AuT.speech_commands.train import lr_scheduler, build_optimizer
 from AuT.lib.loss import CrossEntropyLabelSmooth
 from AuT.lib.config import CT_base
+
+def background_noise(args:argparse.Namespace) -> dict[str, torch.Tensor]:
+    dataset = BackgroundNoiseDataset(root_path=args.background_path)
+    ret = {}
+    for noise_type, noise, sample_rate in dataset:
+        ret[noise_type] = noise
+    return ret
 
 def build_model(args:argparse.Namespace) -> tuple[FCETransform, FCEClassifier]:
     if args.arch_level == 'base':
@@ -35,6 +43,7 @@ if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument('--dataset', type=str, default='CochlScene', choices=['CochlScene'])
     ap.add_argument('--dataset_root_path', type=str)
+    ap.add_argument('--background_path', type=str)
     ap.add_argument('--num_workers', type=int, default=16)
     ap.add_argument('--output_path', type=str, default='./result')
     ap.add_argument('--file_name_suffix', type=str, default='')
@@ -77,6 +86,8 @@ if __name__ == '__main__':
     wandb_run = wandb.init(
         project='AuT-Train', name=f'{args.arch}-{dataset_tag(args.dataset)}', 
         mode='online' if args.wandb else 'disabled', config=args, tags=['Audio Classification', args.dataset, 'AuT'])
+    
+    background_noises = background_noise(args=args)
 
     sample_rate=44100
     args.n_mels=64
@@ -103,6 +114,17 @@ if __name__ == '__main__':
             ]),
             Components(transforms=[
                 GuassianNoise(noise_level=.015),
+                AudioPadding(sample_rate=sample_rate, random_shift=True, max_length=sample_rate*10),
+                a_transforms.MelSpectrogram(
+                    sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
+                    mel_scale=mel_scale
+                ), # 80 x 1471
+                AmplitudeToDB(top_db=80., max_out=2.),
+                MelSpectrogramPadding(target_length=args.target_length),
+                FrequenceTokenTransformer()
+            ]),
+            Components(transforms=[
+                BackgroundNoise(noise_level=40, noise=background_noises['dude_miaowing'], is_random=False),
                 AudioPadding(sample_rate=sample_rate, random_shift=True, max_length=sample_rate*10),
                 a_transforms.MelSpectrogram(
                     sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
