@@ -30,10 +30,13 @@ def build_model(args:argparse.Namespace) -> tuple[FCETransform, FCEClassifier]:
     if args.arch_level == 'base':
         config = CT_base(class_num=args.class_num, n_mels=args.n_mels)
         config.embedding.in_shape = [args.n_mels, args.target_length]
-        config.embedding.num_layers = [6, 12]
+        if args.dataset == 'speech-commands':
+            config.embedding.num_layers = [6, 8]
+        elif args.dataset == 'speech-commands_v2':
+            config.embedding.num_layers = [6, 12]
         config.embedding.width = 128
         config.embedding.embed_num = 13
-        config.classifier.in_embed_num = 2
+        config.classifier.in_embed_num = 13 + 2
         auTmodel = FCETransform(config=config).to(device=args.device)
         clsmodel = FCEClassifier(config=config).to(device=args.device)
 
@@ -65,6 +68,9 @@ if __name__ == '__main__':
     args = ap.parse_args()
     if args.dataset == 'speech-commands_v2':
         args.class_num = 35
+    elif args.dataset == 'speech-commands':
+        args.class_num = 30
+        args.dataset_type = 'all'
     else:
         raise Exception('No support!')
     args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -94,9 +100,8 @@ if __name__ == '__main__':
     hop_length=155
     mel_scale='slaney'
     args.target_length=104
-    if args.dataset == 'speech-commands_v2':
-        train_dataset = build_dataset(args=args, tsf=None, mode='train')
-    # background_noises = background_noise(args=args)
+    train_dataset = build_dataset(args=args, tsf=None, mode='train')
+    background_noises = background_noise(args=args)
     train_dataset = MultiTFDataset(
         dataset=train_dataset,
         tfs=[
@@ -122,17 +127,28 @@ if __name__ == '__main__':
                 MelSpectrogramPadding(target_length=args.target_length),
                 FrequenceTokenTransformer()
             ]),
-            # Components(transforms=[
-            #     BackgroundNoise(noise_level=40, noise=background_noises['dude_miaowing'], is_random=True),
-            #     AudioPadding(sample_rate=sample_rate, random_shift=True, max_length=sample_rate),
-            #     a_transforms.MelSpectrogram(
-            #         sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
-            #         mel_scale=mel_scale
-            #     ), # 80 x 104
-            #     AmplitudeToDB(top_db=80., max_out=2.),
-            #     MelSpectrogramPadding(target_length=args.target_length),
-            #     FrequenceTokenTransformer()
-            # ]),
+            Components(transforms=[
+                BackgroundNoise(noise_level=50, noise=background_noises['dude_miaowing'], is_random=True),
+                AudioPadding(sample_rate=sample_rate, random_shift=True, max_length=sample_rate),
+                a_transforms.MelSpectrogram(
+                    sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
+                    mel_scale=mel_scale
+                ), # 80 x 104
+                AmplitudeToDB(top_db=80., max_out=2.),
+                MelSpectrogramPadding(target_length=args.target_length),
+                FrequenceTokenTransformer()
+            ]),
+            Components(transforms=[
+                # BackgroundNoise(noise_level=50, noise=background_noises['pink_noise'], is_random=True),
+                AudioPadding(sample_rate=sample_rate, random_shift=True, max_length=sample_rate),
+                a_transforms.MelSpectrogram(
+                    sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
+                    mel_scale=mel_scale
+                ), # 80 x 104
+                AmplitudeToDB(top_db=80., max_out=2.),
+                MelSpectrogramPadding(target_length=args.target_length),
+                FrequenceTokenTransformer()
+            ])
         ]
     )
     train_loader = DataLoader(
@@ -150,8 +166,7 @@ if __name__ == '__main__':
         MelSpectrogramPadding(target_length=args.target_length),
         FrequenceTokenTransformer()
     ])
-    if args.dataset == 'speech-commands_v2':
-        val_dataset = build_dataset(args=args, mode=args.validation_mode, tsf=tf_array)
+    val_dataset = build_dataset(args=args, mode=args.validation_mode, tsf=tf_array)
     val_loader = DataLoader(dataset=val_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=4)
 
     auTmodel, clsmodel = build_model(args)
