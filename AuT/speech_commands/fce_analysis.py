@@ -23,7 +23,7 @@ def inference(auT:FCETransform, auC:FCEClassifier, data_loader:DataLoader, args:
         features, labels = features.to(args.device), labels.to(args.device)
 
         with torch.no_grad():
-            outputs = auC(auT(features)[0])
+            outputs = auC(auT(features)[1])
             _, preds = torch.max(input=outputs.detach(), dim=1)
         ttl_corr += (preds == labels).sum().cpu().item()
         ttl_size += labels.shape[0]

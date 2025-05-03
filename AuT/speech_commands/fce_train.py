@@ -30,13 +30,13 @@ def build_model(args:argparse.Namespace) -> tuple[FCETransform, FCEClassifier]:
     if args.arch_level == 'base':
         config = CT_base(class_num=args.class_num, n_mels=args.n_mels)
         config.embedding.in_shape = [args.n_mels, args.target_length]
-        if args.dataset == 'speech-commands':
-            config.embedding.num_layers = [6, 8]
-        elif args.dataset == 'speech-commands_v2':
-            config.embedding.num_layers = [6, 12]
+        config.embedding.num_layers = [6, 12]
         config.embedding.width = 128
         config.embedding.embed_num = 13
-        config.classifier.in_embed_num = 13 + 2
+        if args.dataset == 'speech-commands':
+            config.classifier.in_embed_num = 2
+        elif args.dataset == 'speech-commands_v2':
+            config.classifier.in_embed_num = 13 + 2
         auTmodel = FCETransform(config=config).to(device=args.device)
         clsmodel = FCEClassifier(config=config).to(device=args.device)
 
@@ -127,28 +127,28 @@ if __name__ == '__main__':
                 MelSpectrogramPadding(target_length=args.target_length),
                 FrequenceTokenTransformer()
             ]),
-            Components(transforms=[
-                BackgroundNoise(noise_level=50, noise=background_noises['dude_miaowing'], is_random=True),
-                AudioPadding(sample_rate=sample_rate, random_shift=True, max_length=sample_rate),
-                a_transforms.MelSpectrogram(
-                    sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
-                    mel_scale=mel_scale
-                ), # 80 x 104
-                AmplitudeToDB(top_db=80., max_out=2.),
-                MelSpectrogramPadding(target_length=args.target_length),
-                FrequenceTokenTransformer()
-            ]),
-            Components(transforms=[
-                # BackgroundNoise(noise_level=50, noise=background_noises['pink_noise'], is_random=True),
-                AudioPadding(sample_rate=sample_rate, random_shift=True, max_length=sample_rate),
-                a_transforms.MelSpectrogram(
-                    sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
-                    mel_scale=mel_scale
-                ), # 80 x 104
-                AmplitudeToDB(top_db=80., max_out=2.),
-                MelSpectrogramPadding(target_length=args.target_length),
-                FrequenceTokenTransformer()
-            ])
+            # Components(transforms=[
+            #     BackgroundNoise(noise_level=50, noise=background_noises['dude_miaowing'], is_random=True),
+            #     AudioPadding(sample_rate=sample_rate, random_shift=True, max_length=sample_rate),
+            #     a_transforms.MelSpectrogram(
+            #         sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
+            #         mel_scale=mel_scale
+            #     ), # 80 x 104
+            #     AmplitudeToDB(top_db=80., max_out=2.),
+            #     MelSpectrogramPadding(target_length=args.target_length),
+            #     FrequenceTokenTransformer()
+            # ]),
+            # Components(transforms=[
+            #     BackgroundNoise(noise_level=50, noise=background_noises['pink_noise'], is_random=True),
+            #     AudioPadding(sample_rate=sample_rate, random_shift=True, max_length=sample_rate),
+            #     a_transforms.MelSpectrogram(
+            #         sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
+            #         mel_scale=mel_scale
+            #     ), # 80 x 104
+            #     AmplitudeToDB(top_db=80., max_out=2.),
+            #     MelSpectrogramPadding(target_length=args.target_length),
+            #     FrequenceTokenTransformer()
+            # ])
         ]
     )
     train_loader = DataLoader(
@@ -190,7 +190,10 @@ if __name__ == '__main__':
             optimizer.zero_grad()
             for i in range(len(fs) - 1):
                 features = fs[i].to(args.device)
-                outputs = clsmodel(auTmodel(features)[0])
+                if args.dataset == 'speech-commands':
+                    outputs = clsmodel(auTmodel(features)[1])
+                elif args.dataset == 'speech-commands_v2':
+                    ouputs = clsmodel(auTmodel(features)[0])
                 if i == 0:
                     loss = loss_fn(outputs, labels)
                 else:
@@ -216,7 +219,10 @@ if __name__ == '__main__':
         for features, labels in tqdm(val_loader):
             features, labels = features.to(args.device), labels.to(args.device)
             with torch.no_grad():
-                outputs = clsmodel(auTmodel(features)[0])
+                if args.dataset == 'speech-commands':
+                    outputs = clsmodel(auTmodel(features)[1])
+                elif args.dataset == 'speech-commands_v2':
+                    outputs = clsmodel(auTmodel(features)[0])
                 _, preds = torch.max(outputs.detach(), dim=1)
             ttl_val_size += labels.shape[0]
             ttl_val_corr += (preds == labels).sum().cpu().item()
