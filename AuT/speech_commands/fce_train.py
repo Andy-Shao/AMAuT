@@ -6,6 +6,7 @@ import wandb
 from tqdm import tqdm
 
 import torch
+from torch import nn
 from torchaudio import transforms as a_transforms
 from torch.utils.data import DataLoader
 
@@ -14,7 +15,7 @@ from lib.wavUtils import Components, AudioPadding, AmplitudeToDB, time_shift, Me
 from lib.wavUtils import GuassianNoise, BackgroundNoise
 from lib.datasets import dataset_tag, MultiTFDataset
 from lib.spDataset import BackgroundNoiseDataset
-from AuT.lib.model import FCETransform, FCEClassifier
+from AuT.lib.model import FCETransform, FCEClassifier, AudioClassifier
 from AuT.speech_commands.train import lr_scheduler, build_optimizer, build_dataset
 from AuT.lib.loss import CrossEntropyLabelSmooth
 from AuT.lib.config import CT_base
@@ -26,7 +27,7 @@ def background_noise(args:argparse.Namespace) -> dict[str, torch.Tensor]:
         ret[noise_type] = noise
     return ret
 
-def build_model(args:argparse.Namespace) -> tuple[FCETransform, FCEClassifier]:
+def build_model(args:argparse.Namespace) -> tuple[FCETransform, nn.Module]:
     if args.arch_level == 'base':
         config = CT_base(class_num=args.class_num, n_mels=args.n_mels)
         config.embedding.in_shape = [args.n_mels, args.target_length]
@@ -34,11 +35,12 @@ def build_model(args:argparse.Namespace) -> tuple[FCETransform, FCEClassifier]:
         config.embedding.width = 128
         config.embedding.embed_num = 13
         if args.dataset == 'speech-commands':
-            config.classifier.in_embed_num = 2
+            config.classifier.in_embed_num = 13 + 2
+            clsmodel = AudioClassifier(config=config).to(device=args.device)
         elif args.dataset == 'speech-commands_v2':
             config.classifier.in_embed_num = 13 + 2
+            clsmodel = FCEClassifier(config=config).to(device=args.device)
         auTmodel = FCETransform(config=config).to(device=args.device)
-        clsmodel = FCEClassifier(config=config).to(device=args.device)
 
     return auTmodel, clsmodel
 
@@ -191,7 +193,7 @@ if __name__ == '__main__':
             for i in range(len(fs) - 1):
                 features = fs[i].to(args.device)
                 if args.dataset == 'speech-commands':
-                    outputs = clsmodel(auTmodel(features)[1])
+                    outputs, _ = clsmodel(auTmodel(features)[0])
                 elif args.dataset == 'speech-commands_v2':
                     ouputs = clsmodel(auTmodel(features)[0])
                 if i == 0:
@@ -220,7 +222,7 @@ if __name__ == '__main__':
             features, labels = features.to(args.device), labels.to(args.device)
             with torch.no_grad():
                 if args.dataset == 'speech-commands':
-                    outputs = clsmodel(auTmodel(features)[1])
+                    outputs, _ = clsmodel(auTmodel(features)[0])
                 elif args.dataset == 'speech-commands_v2':
                     outputs = clsmodel(auTmodel(features)[0])
                 _, preds = torch.max(outputs.detach(), dim=1)
