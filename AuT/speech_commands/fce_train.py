@@ -129,17 +129,17 @@ if __name__ == '__main__':
                 MelSpectrogramPadding(target_length=args.target_length),
                 FrequenceTokenTransformer()
             ]),
-            # Components(transforms=[
-            #     BackgroundNoise(noise_level=50, noise=background_noises['dude_miaowing'], is_random=True),
-            #     AudioPadding(sample_rate=sample_rate, random_shift=True, max_length=sample_rate),
-            #     a_transforms.MelSpectrogram(
-            #         sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
-            #         mel_scale=mel_scale
-            #     ), # 80 x 104
-            #     AmplitudeToDB(top_db=80., max_out=2.),
-            #     MelSpectrogramPadding(target_length=args.target_length),
-            #     FrequenceTokenTransformer()
-            # ]),
+            Components(transforms=[
+                BackgroundNoise(noise_level=50, noise=background_noises['dude_miaowing'], is_random=True),
+                AudioPadding(sample_rate=sample_rate, random_shift=True, max_length=sample_rate),
+                a_transforms.MelSpectrogram(
+                    sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
+                    mel_scale=mel_scale
+                ), # 80 x 104
+                AmplitudeToDB(top_db=80., max_out=2.),
+                MelSpectrogramPadding(target_length=args.target_length),
+                FrequenceTokenTransformer()
+            ]),
             # Components(transforms=[
             #     BackgroundNoise(noise_level=50, noise=background_noises['pink_noise'], is_random=True),
             #     AudioPadding(sample_rate=sample_rate, random_shift=True, max_length=sample_rate),
