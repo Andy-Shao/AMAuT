@@ -1,7 +1,7 @@
-# Multiple Modality Audio Transform (MMAuT) for Audio Classification
+# Multiple Modality Audio Transformer (MMAuT) for Audio Classification
 
 ## Project Structure
-+ **AuT**: the Audio Transform structure
++ **AuT**: the Audio Transformer framework
 + **lib**: library
 + **result**: training and analysis results
 
