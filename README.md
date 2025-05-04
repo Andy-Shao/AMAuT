@@ -1,4 +1,4 @@
-# Multiple Modality Audio Transform (MMAuT)
+# Multiple Modality Audio Transform (MMAuT) for Audio Classification
 
 ## Project Structure
 + **AuT**: the Audio Transform structure
