@@ -231,7 +231,7 @@ if __name__ == '__main__':
     aug_test_loader = DataLoader(dataset=aug_test_set, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=args.num_workers)
     accu = aug_elect_inference(auT=auTmodel, auC=clsmodel, data_loader=aug_test_loader, args=args)
     print(f'Augmentation election refinement accuracy is: {accu:.4f}%, sample size is: {len(aug_test_set)}')
-    accu_record.loc[len(accu_record)] = [args.dataset, 'FCE', pd.NA, accu, 100. - accu, weigth_num]
+    accu_record.loc[len(accu_record)] = [args.dataset, 'FCE', 'aug-elect', accu, 100. - accu, weigth_num]
 
     print('Multi-training election refinement')
     load_model(args=args, auT=auTmodel, auC=clsmodel, version=1)
@@ -244,7 +244,7 @@ if __name__ == '__main__':
         data_loader=test_loader, args=args
     )
     print(f'Multi-training election refinement accuracy is: {accu:.4f}%, sample size is: {len(test_dataset)}')
-    accu_record.loc[len(accu_record)] = [args.dataset, 'FCE', pd.NA, accu, 100. - accu, weigth_num]
+    accu_record.loc[len(accu_record)] = [args.dataset, 'FCE', 'multi-train', accu, 100. - accu, weigth_num]
 
     print('Hybrid election refinement')
     load_model(args=args, auT=auTmodel, auC=clsmodel, version=1)
@@ -255,6 +255,6 @@ if __name__ == '__main__':
         data_loader=aug_test_loader, args=args
     )
     print(f'Hybrid election refinement accuracy is: {accu:.4f}%, sample size is: {len(aug_test_set)}')
-    accu_record.loc[len(accu_record)] = [args.dataset, 'FCE', pd.NA, accu, 100. - accu, weigth_num]
+    accu_record.loc[len(accu_record)] = [args.dataset, 'FCE', 'hybrid-elect', accu, 100. - accu, weigth_num]
 
     accu_record.to_csv(relative_path(args, args.output_csv_name))
