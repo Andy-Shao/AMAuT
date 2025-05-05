@@ -14,14 +14,14 @@ from lib.wavUtils import Components, AudioPadding, AmplitudeToDB, MelSpectrogram
 from lib.wavUtils import time_shift, GuassianNoise
 from lib.datasets import MultiTFDataset
 from AuT.speech_commands.train import build_dataset
-from AuT.lib.model import FCETransform
+from AuT.lib.model import FCETransform, AudioClassifier
 from AuT.speech_commands.fce_train import build_model
 
 def hybrid_inference(
-    auT:FCETransform, auC:nn.Module, auT2:FCETransform, auC2:nn.Module, auT3:FCETransform, auC3:nn.Module,
+    auT:FCETransform, auC:AudioClassifier, auT2:FCETransform, auC2:AudioClassifier, auT3:FCETransform, auC3:AudioClassifier,
     data_loader: DataLoader, args:argparse.Namespace
 ) -> float:
-    def aug_inference(T:FCETransform, C:nn.Module, f1:torch.Tensor, f2:torch.Tensor, f3:torch.Tensor) -> torch.Tensor:
+    def aug_inference(T:FCETransform, C:AudioClassifier, f1:torch.Tensor, f2:torch.Tensor, f3:torch.Tensor) -> torch.Tensor:
         with torch.no_grad():
             o1, _ = C(T(f1)[0])
             o2, _ = C(T(f2)[0])
@@ -48,7 +48,7 @@ def hybrid_inference(
     return ttl_corr / ttl_size * 100.
 
 def multi_train_inference(
-    auT:FCETransform, auC:nn.Module, auT2:FCETransform, auC2:nn.Module, auT3:FCETransform, auC3:nn.Module,
+    auT:FCETransform, auC:AudioClassifier, auT2:FCETransform, auC2:AudioClassifier, auT3:FCETransform, auC3:AudioClassifier,
     data_loader: DataLoader, args:argparse.Namespace
 ) -> float:
     auT.eval()
@@ -78,7 +78,7 @@ def merge_outs(o1:torch.Tensor, o2:torch.Tensor, o3:torch.Tensor, softmax:bool=F
         return (F.softmax(o1, dim=1) + F.softmax(o2, dim=1) + F.softmax(o3, dim=1)) / 3.
     else: return (o1 + o2 + o3) / 3.
 
-def aug_elect_inference(auT:FCETransform, auC:nn.Module, data_loader:DataLoader, args:argparse.Namespace) -> float:
+def aug_elect_inference(auT:FCETransform, auC:AudioClassifier, data_loader:DataLoader, args:argparse.Namespace) -> float:
     auT.eval()
     auC.eval()
     ttl_size = 0.
@@ -96,7 +96,7 @@ def aug_elect_inference(auT:FCETransform, auC:nn.Module, data_loader:DataLoader,
         ttl_size += labels.shape[0]
     return ttl_corr / ttl_size * 100.
 
-def inference(auT:FCETransform, auC:nn.Module, data_loader:DataLoader, args:argparse.Namespace) -> float:
+def inference(auT:FCETransform, auC:AudioClassifier, data_loader:DataLoader, args:argparse.Namespace) -> float:
     auT.eval()
     auC.eval()
     ttl_size = 0.
@@ -112,7 +112,7 @@ def inference(auT:FCETransform, auC:nn.Module, data_loader:DataLoader, args:argp
 
     return ttl_corr / ttl_size * 100.0
 
-def load_model(args:argparse.Namespace, auT:FCETransform, auC:nn.Module, version=1):
+def load_model(args:argparse.Namespace, auT:FCETransform, auC:AudioClassifier, version=1):
     if version == 1:
         auT_path = args.original_auT_weight_path
         auC_path = args.original_auC_weight_path
@@ -143,6 +143,8 @@ if __name__ == '__main__':
     ap.add_argument('--original_auC2_weight_path', type=str)
     ap.add_argument('--original_auT3_weight_path', type=str)
     ap.add_argument('--original_auC3_weight_path', type=str)
+
+    ap.add_argument('--only_origin', action='store_true')
 
     args = ap.parse_args()
     if args.dataset == 'speech-commands':
@@ -191,6 +193,9 @@ if __name__ == '__main__':
     accu = inference(auT=auTmodel, auC=clsmodel, data_loader=test_loader, args=args)
     print(f'Original accuracy is: {accu:.4f}%, sample size is: {len(test_dataset)}')
     accu_record.loc[len(accu_record)] = [args.dataset, 'FCE', pd.NA, accu, 100. - accu, weigth_num]
+
+    if args.only_origin:
+        exit()
 
     print('Augmentation election refinement')
     load_model(args=args, auT=auTmodel, auC=clsmodel, version=1)
