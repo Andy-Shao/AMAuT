@@ -1,0 +1,5 @@
+,dataset,algorithm,tta-operation,accuracy,error,number of weight
+0,AudioMNIST,FCE,,99.75,0.25,99126548
+1,AudioMNIST,FCE,aug-elect,99.71666666666667,0.28333333333333144,99126548
+2,AudioMNIST,FCE,multi-train,99.8,0.20000000000000284,99126548
+3,AudioMNIST,FCE,hybrid-elect,99.8,0.20000000000000284,99126548
