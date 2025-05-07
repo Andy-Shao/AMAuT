@@ -11,12 +11,10 @@ from torch.utils.data import DataLoader
 
 from lib.toolkit import print_argparse, relative_path, store_model_structure_to_txt
 from lib.wavUtils import Components, AudioPadding, AmplitudeToDB, time_shift, MelSpectrogramPadding, FrequenceTokenTransformer
-from lib.wavUtils import GuassianNoise, BackgroundNoise
 from lib.datasets import dataset_tag, MultiTFDataset
 from lib.spDataset import AudioMINST
 from AuT.lib.model import FCETransform, AudioClassifier
 from AuT.speech_commands.train import lr_scheduler, build_optimizer
-from AuT.speech_commands.fce_train import background_noise
 from AuT.lib.loss import CrossEntropyLabelSmooth
 from AuT.lib.config import CT_base
 
@@ -37,7 +35,6 @@ if __name__ == '__main__':
     ap.add_argument('--dataset', type=str, default='AudioMNIST', choices=['AudioMNIST'])
     ap.add_argument('--fold', type=int, default=0, choices=[0, 1, 2, 3, 4])
     ap.add_argument('--dataset_root_path', type=str)
-    ap.add_argument('--background_path', type=str)
     ap.add_argument('--num_workers', type=int, default=16)
     ap.add_argument('--output_path', type=str, default='./result')
     ap.add_argument('--file_name_suffix', type=str, default='')
@@ -90,7 +87,6 @@ if __name__ == '__main__':
     args.target_length=160
     train_list = AudioMINST.default_splits(mode='train', fold=args.fold, root_path=args.dataset_root_path)
     train_list += AudioMINST.default_splits(mode='validate', fold=args.fold, root_path=args.dataset_root_path)
-    background_noises = background_noise(args=args)
     train_dataset = MultiTFDataset(
         dataset=AudioMINST(data_paths=train_list, data_trainsforms=None, include_rate=False),
         tfs=[
@@ -104,40 +100,7 @@ if __name__ == '__main__':
                 AmplitudeToDB(top_db=80., max_out=2.),
                 MelSpectrogramPadding(target_length=args.target_length),
                 FrequenceTokenTransformer()
-            ]),
-            # Components(transforms=[
-            #     GuassianNoise(noise_level=.015),
-            #     AudioPadding(sample_rate=sample_rate, random_shift=True, max_length=sample_rate),
-            #     a_transforms.MelSpectrogram(
-            #         sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
-            #         mel_scale=mel_scale
-            #     ), # 80 x 159
-            #     AmplitudeToDB(top_db=80., max_out=2.),
-            #     MelSpectrogramPadding(target_length=args.target_length),
-            #     FrequenceTokenTransformer()
-            # ]),
-            # Components(transforms=[
-            #     BackgroundNoise(noise_level=50, noise=background_noises['dude_miaowing'], is_random=True),
-            #     AudioPadding(sample_rate=sample_rate, random_shift=True, max_length=sample_rate),
-            #     a_transforms.MelSpectrogram(
-            #         sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
-            #         mel_scale=mel_scale
-            #     ), # 80 x 159
-            #     AmplitudeToDB(top_db=80., max_out=2.),
-            #     MelSpectrogramPadding(target_length=args.target_length),
-            #     FrequenceTokenTransformer()
-            # ]),
-            # Components(transforms=[
-            #     BackgroundNoise(noise_level=50, noise=background_noises['pink_noise'], is_random=True),
-            #     AudioPadding(sample_rate=sample_rate, random_shift=True, max_length=sample_rate),
-            #     a_transforms.MelSpectrogram(
-            #         sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
-            #         mel_scale=mel_scale
-            #     ), # 80 x 159
-            #     AmplitudeToDB(top_db=80., max_out=2.),
-            #     MelSpectrogramPadding(target_length=args.target_length),
-            #     FrequenceTokenTransformer()
-            # ])
+            ])
         ]
     )
     train_loader = DataLoader(dataset=train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=False, num_workers=args.num_workers)

@@ -18,4 +18,4 @@ export BASE_PATH=${BASE_PATH:-'/root'}
 
 python -m AuT.audiomnist.fce_train --dataset 'AudioMNIST' --dataset_root_path $BASE_PATH'/data/AudioMNIST/data' \
     --max_epoch 30 --batch_size 32 --lr '1e-3' --arch 'FCE' --arch_level 'base' --validation_mode 'test' \
-    --background_path $BASE_PATH'/data/speech_commands' --file_name_suffix 'debug' --fold 0 --wandb
+    --file_name_suffix 'debug' --fold 0 --wandb
