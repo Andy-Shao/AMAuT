@@ -1,0 +1,5 @@
+,dataset,algorithm,tta-operation,accuracy,error,number of weight
+0,speech-commands_v2,FCE,,95.75647432985008,4.243525670149921,103072070
+1,speech-commands_v2,FCE,aug-elect,95.80190822353475,4.1980917764652474,103072070
+2,speech-commands_v2,FCE,multi-train,96.21081326669696,3.7891867333030405,103072070
+3,speech-commands_v2,FCE,hybrid-elect,96.12903225806451,3.8709677419354875,103072070
