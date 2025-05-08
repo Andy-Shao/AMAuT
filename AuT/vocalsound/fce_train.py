@@ -6,7 +6,6 @@ import wandb
 from tqdm import tqdm
 
 import torch
-from torch import nn
 from torchaudio import transforms as a_transforms
 from torch.utils.data import DataLoader
 
@@ -21,7 +20,7 @@ from AuT.speech_commands.fce_train import background_noise
 from AuT.lib.loss import CrossEntropyLabelSmooth
 from AuT.lib.config import CT_base
 
-def build_model(args:argparse.Namespace) -> tuple[FCETransform, nn.Module]:
+def build_model(args:argparse.Namespace) -> tuple[FCETransform, FCEClassifier]:
     if args.arch_level == 'base':
         config = CT_base(class_num=args.class_num, n_mels=args.n_mels)
         config.embedding.in_shape = [args.n_mels, args.target_length]
