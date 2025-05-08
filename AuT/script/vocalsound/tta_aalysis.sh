@@ -16,4 +16,4 @@ python -m AuT.vocalsound.fce_analysis --dataset 'VocalSound' --dataset_root_path
     --original_auT2_weight_path './result/VocalSound/AuT/train/FCE-VS-auT2.pt' \
     --original_auC2_weight_path './result/VocalSound/AuT/train/FCE-VS-cls2.pt' \
     --original_auT3_weight_path './result/VocalSound/AuT/train/FCE-VS-auT3.pt' \
-    --original_auC3_weight_path './result/VocalSound/AuT/train/FCE-VS-cls3.pt' --only_origin
+    --original_auC3_weight_path './result/VocalSound/AuT/train/FCE-VS-cls3.pt'

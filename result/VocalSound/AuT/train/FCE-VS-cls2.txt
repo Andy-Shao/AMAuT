@@ -1,0 +1,5 @@
+FCEClassifier(
+  (merge): Conv1d(2, 1, kernel_size=(15,), stride=(1,), padding=(7,))
+  (norm): LayerNorm((768,), eps=1e-06, elementwise_affine=True)
+  (fc): Linear(in_features=768, out_features=6, bias=True)
+)
