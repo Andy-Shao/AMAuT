@@ -89,7 +89,7 @@ if __name__ == '__main__':
     hop_length=154
     mel_scale='slaney'
     args.target_length=1040
-    # background_noises = background_noise(args=args)
+    background_noises = background_noise(args=args)
     train_dataset = MultiTFDataset(
         dataset=VocalSound(root_path=args.dataset_root_path, mode='train', include_rate=False, data_tf=None, version='16k'),
         tfs=[
@@ -117,30 +117,30 @@ if __name__ == '__main__':
                 MelSpectrogramPadding(target_length=args.target_length),
                 FrequenceTokenTransformer()
             ]),
-            # Components(transforms=[
-            #     BackgroundNoise(noise_level=50, noise=background_noises['dude_miaowing'], is_random=True),
-            #     AudioPadding(sample_rate=sample_rate, random_shift=True, max_length=max_length),
-            #     AudioClip(max_length=max_length, mode='head', is_random=False),
-            #     a_transforms.MelSpectrogram(
-            #         sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
-            #         mel_scale=mel_scale
-            #     ), # 80 x 1039
-            #     AmplitudeToDB(top_db=80., max_out=2.),
-            #     MelSpectrogramPadding(target_length=args.target_length),
-            #     FrequenceTokenTransformer()
-            # ]),
-            # Components(transforms=[
-            #     BackgroundNoise(noise_level=50, noise=background_noises['pink_noise'], is_random=True),
-            #     AudioPadding(sample_rate=sample_rate, random_shift=True, max_length=max_length),
-            #     AudioClip(max_length=max_length, mode='head', is_random=False),
-            #     a_transforms.MelSpectrogram(
-            #         sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
-            #         mel_scale=mel_scale
-            #     ), # 80 x 1039
-            #     AmplitudeToDB(top_db=80., max_out=2.),
-            #     MelSpectrogramPadding(target_length=args.target_length),
-            #     FrequenceTokenTransformer()
-            # ])
+            Components(transforms=[
+                BackgroundNoise(noise_level=50, noise=background_noises['dude_miaowing'], is_random=True),
+                AudioPadding(sample_rate=sample_rate, random_shift=True, max_length=max_length),
+                AudioClip(max_length=max_length, mode='head', is_random=False),
+                a_transforms.MelSpectrogram(
+                    sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
+                    mel_scale=mel_scale
+                ), # 80 x 1039
+                AmplitudeToDB(top_db=80., max_out=2.),
+                MelSpectrogramPadding(target_length=args.target_length),
+                FrequenceTokenTransformer()
+            ]),
+            Components(transforms=[
+                BackgroundNoise(noise_level=50, noise=background_noises['pink_noise'], is_random=True),
+                AudioPadding(sample_rate=sample_rate, random_shift=True, max_length=max_length),
+                AudioClip(max_length=max_length, mode='head', is_random=False),
+                a_transforms.MelSpectrogram(
+                    sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
+                    mel_scale=mel_scale
+                ), # 80 x 1039
+                AmplitudeToDB(top_db=80., max_out=2.),
+                MelSpectrogramPadding(target_length=args.target_length),
+                FrequenceTokenTransformer()
+            ])
         ]
     )
     train_loader = DataLoader(
