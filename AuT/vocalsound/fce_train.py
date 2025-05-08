@@ -16,7 +16,7 @@ from lib.wavUtils import GuassianNoise, BackgroundNoise, AudioClip
 from lib.datasets import dataset_tag, MultiTFDataset
 from lib.spDataset import VocalSound
 from AuT.lib.model import FCETransform, FCEClassifier
-from AuT.speech_commands.train import lr_scheduler, build_optimizer, build_dataset
+from AuT.speech_commands.train import lr_scheduler, build_optimizer
 from AuT.speech_commands.fce_train import background_noise
 from AuT.lib.loss import CrossEntropyLabelSmooth
 from AuT.lib.config import CT_base
@@ -159,7 +159,7 @@ if __name__ == '__main__':
         MelSpectrogramPadding(target_length=args.target_length),
         FrequenceTokenTransformer()
     ])
-    val_dataset = VocalSound(root_path=args.dataset_root_path, mode=args.validation_mode, include_rate=False, data_tf=None, version='16k')
+    val_dataset = VocalSound(root_path=args.dataset_root_path, mode=args.validation_mode, include_rate=False, data_tf=tf_array, version='16k')
     val_loader = DataLoader(dataset=val_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=4)
 
     auTmodel, clsmodel = build_model(args)
