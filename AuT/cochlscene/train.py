@@ -161,7 +161,7 @@ if __name__ == '__main__':
     ])
     if args.dataset == 'CochlScene':
         val_dataset = CochlScene(root_path=args.dataset_root_path, mode=args.validation_mode, data_tf=tf_array, include_rate=False)
-    val_loader = DataLoader(dataset=val_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=args.num_workers)
+    val_loader = DataLoader(dataset=val_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=4)
 
     auTmodel, clsmodel = build_model(args)
     store_model_structure_to_txt(model=auTmodel, output_path=relative_path(args, f'{args.arch}-{dataset_tag(args.dataset)}-auT{args.file_name_suffix}.txt'))
