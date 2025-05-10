@@ -26,7 +26,7 @@ def hybrid_inference(
             o1 = C(T(f1)[1])
             o2 = C(T(f2)[1])
             o3 = C(T(f3)[1])
-        return merge_outs(o1, o2, o3)
+        return merge_outs(o1, o2, o3, softmax=(args.merg_mode == 'softmax'))
     auT.eval()
     auC.eval()
     auT2.eval()
@@ -41,7 +41,7 @@ def hybrid_inference(
         o1 = aug_inference(T=auT, C=auC, f1=aug1, f2=aug2, f3=org)
         o2 = aug_inference(T=auT2, C=auC2, f1=aug1, f2=aug2, f3=org)
         o3 = aug_inference(T=auT3, C=auC3, f1=aug1, f2=aug2, f3=org)
-        o = merge_outs(o1, o2, o3)
+        o = merge_outs(o1, o2, o3, softmax=(args.merg_mode == 'softmax'))
         _, preds = torch.max(input=o.detach(), dim=1)
         ttl_size += labels.shape[0]
         ttl_corr += (preds == labels).sum().cpu().item()
@@ -66,7 +66,7 @@ def multi_train_inference(
             o1 = auC(auT(features)[1])
             o2 = auC2(auT2(features)[1])
             o3 = auC3(auT3(features)[1])
-            outputs = merge_outs(o1, o2, o3)
+            outputs = merge_outs(o1, o2, o3, softmax=(args.merg_mode == 'softmax'))
             _, preds = torch.max(input=outputs.detach(), dim=1)
         ttl_corr += (preds == labels).sum().cpu().item()
         ttl_size += labels.shape[0]
@@ -84,7 +84,7 @@ def aug_elect_inference(auT:FCETransform, auC:FCEClassifier, data_loader:DataLoa
             o1 = auC(auT(aug1)[1])
             o2 = auC(auT(aug2)[1])
             o3 = auC(auT(org)[1])
-            outputs = merge_outs(o1, o2, o3)
+            outputs = merge_outs(o1, o2, o3, softmax=(args.merg_mode == 'softmax'))
             _, preds = torch.max(input=outputs.detach(), dim=1)
         ttl_corr += (preds == labels).sum().cpu().item()
         ttl_size += labels.shape[0]
@@ -126,6 +126,7 @@ if __name__ == '__main__':
     ap.add_argument('--original_auC3_weight_path', type=str)
 
     ap.add_argument('--only_origin', action='store_true')
+    ap.add_argument('--merg_mode', type=str, default='origin', choices=['origin', 'softmax'])
 
     args = ap.parse_args()
     if args.dataset == 'VocalSound':
