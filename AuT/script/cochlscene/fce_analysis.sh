@@ -7,4 +7,4 @@ python -m AuT.cochlscene.fce_analysis --dataset 'CochlScene' --dataset_root_path
     --original_auT2_weight_path './result/CochlScene/AuT/train/FCE-CS-auT2.pt' \
     --original_auC2_weight_path './result/CochlScene/AuT/train/FCE-CS-cls2.pt' \
     --original_auT3_weight_path './result/CochlScene/AuT/train/FCE-CS-auT3.pt' \
-    --original_auC3_weight_path './result/CochlScene/AuT/train/FCE-CS-cls3.pt' --only_origin
+    --original_auC3_weight_path './result/CochlScene/AuT/train/FCE-CS-cls3.pt'
