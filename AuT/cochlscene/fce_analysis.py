@@ -60,7 +60,7 @@ if __name__ == '__main__':
     win_length=800
     hop_length=300
     mel_scale='slaney'
-    args.target_length=1472
+    args.target_length=1471
     tf_array = Components(transforms=[
         AudioPadding(sample_rate=sample_rate, random_shift=False, max_length=sample_rate*10),
         a_transforms.MelSpectrogram(

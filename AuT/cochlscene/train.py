@@ -95,9 +95,8 @@ if __name__ == '__main__':
     win_length=800
     hop_length=300
     mel_scale='slaney'
-    args.target_length=1472
-    if args.dataset == 'CochlScene':
-        train_dataset = CochlScene(root_path=args.dataset_root_path, mode='train', include_rate=False)
+    args.target_length=1471
+    train_dataset = CochlScene(root_path=args.dataset_root_path, mode='train', include_rate=False)
     train_dataset = MultiTFDataset(
         dataset=train_dataset,
         tfs=[
@@ -147,7 +146,7 @@ if __name__ == '__main__':
             ])
         ]
     )
-    train_loader = DataLoader(dataset=train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=False, num_workers=args.num_workers)
+    train_loader = DataLoader(dataset=train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=False, num_workers=args.num_workers, pin_memory=True)
 
     tf_array = Components(transforms=[
         AudioPadding(sample_rate=sample_rate, random_shift=False, max_length=sample_rate*10),
@@ -159,9 +158,8 @@ if __name__ == '__main__':
         MelSpectrogramPadding(target_length=args.target_length),
         FrequenceTokenTransformer()
     ])
-    if args.dataset == 'CochlScene':
-        val_dataset = CochlScene(root_path=args.dataset_root_path, mode=args.validation_mode, data_tf=tf_array, include_rate=False)
-    val_loader = DataLoader(dataset=val_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=4)
+    val_dataset = CochlScene(root_path=args.dataset_root_path, mode=args.validation_mode, data_tf=tf_array, include_rate=False)
+    val_loader = DataLoader(dataset=val_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False, num_workers=args.num_workers, pin_memory=True)
 
     auTmodel, clsmodel = build_model(args)
     store_model_structure_to_txt(model=auTmodel, output_path=relative_path(args, f'{args.arch}-{dataset_tag(args.dataset)}-auT{args.file_name_suffix}.txt'))
