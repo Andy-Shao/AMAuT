@@ -93,7 +93,7 @@ VocalSound is a free dataset consisting of 21,024 crowdsourced recordings of lau
 
 + Sample Size: 20977 (Train: 15531, validation: 1855, test: 3591)
 + Sample rate: 16000
-+ Audo length: less than 12 seconds
++ Audio length: less than 12 seconds
 + Class number: 6
 
 [VocalSound Dataset Link](https://sls.csail.mit.edu/downloads/vocalsound/)<br/>
