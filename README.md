@@ -60,7 +60,7 @@ This repository contains code and data used in Interpreting and Explaining Deep 
   
 [Audio MNIST Link](https://github.com/soerenab/AudioMNIST/tree/master)
 
-### SpeechCommands Dataset v0.01
+### SpeechCommands v0.01
 The dataset (1.4 GB) has 65,000 one-second long utterances of 30 short words by thousands of different people, contributed by public members through the AIY website. This is a set of one-second .wav audio files, each containing a single spoken English word.
 
 In both versions, ten of them are used as commands by convention: "Yes", "No", "Up", "Down", "Left",
@@ -77,7 +77,7 @@ from unrecognized ones.
 [Speech Commands Dataset Link](https://research.google/blog/launching-the-speech-commands-dataset/)<br/>
 [Dataset Download Link](http://download.tensorflow.org/data/speech_commands_v0.01.tar.gz)
 
-### SpeechCommands Dataset v0.02
+### SpeechCommands v0.02
 Add five new words in the Dataset, such as, 'backward', 'forward', 'follow', 'learn', and 'visual'.
 
 + Sample size: 105829 (train: 84843, test: 11005, validation: 9981)
