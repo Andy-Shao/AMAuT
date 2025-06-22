@@ -7,6 +7,10 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
+def make_unless_exits(url:str) -> None:
+    if not os.path.exists(url):
+        os.makedirs(url)
+
 def print_argparse(args: argparse.Namespace) -> None:
     for arg in vars(args):
         print(f'--{arg} = {getattr(args, arg)}')
