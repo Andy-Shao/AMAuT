@@ -200,7 +200,7 @@ if __name__ == '__main__':
             dataset=org_set,
             tfs=[
                 Components(transforms=[
-                    AudioPadding(sample_rate=sample_rate, random_shift=True, max_length=sample_rate),
+                    AudioPadding(sample_rate=sample_rate, random_shift=False, max_length=sample_rate),
                     a_transforms.MelSpectrogram(
                         sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
                         mel_scale=mel_scale
