@@ -14,7 +14,7 @@ from torchaudio import transforms as a_transforms
 
 from lib.toolkit import print_argparse, make_unless_exits
 from lib.datasets import dataset_tag, MultiTFDataset
-from lib.spDataset import SpeechCommandsDataset
+from lib.spDataset import SpeechCommandsDataset, SpeechCommandsV2
 from lib.wavUtils import Components, AudioPadding, time_shift, AmplitudeToDB, MelSpectrogramPadding, FrequenceTokenTransformer
 from AuT.speech_commands.fce_train import build_model
 from AuT.speech_commands.train import op_copy
@@ -189,6 +189,37 @@ if __name__ == '__main__':
                 ]),
             ]
         )
+    elif args.dataset == 'speech-commands_v2':
+        shift_set = MultiTFDataset(
+            dataset=SpeechCommandsV2(
+                root_path=args.dataset_root_path, mode='testing', folder_in_archive='speech-commands_v2', download=True,
+                data_tf=None, 
+            ),
+            tfs=[
+                Components(transforms=[
+                    AudioPadding(sample_rate=sample_rate, random_shift=True, max_length=sample_rate),
+                    time_shift(shift_limit=.17, is_random=True, is_bidirection=False),
+                    a_transforms.MelSpectrogram(
+                        sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
+                        mel_scale=mel_scale
+                    ), # 80 x 104
+                    AmplitudeToDB(top_db=80., max_out=2.),
+                    MelSpectrogramPadding(target_length=args.target_length),
+                    FrequenceTokenTransformer()
+                ]),
+                Components(transforms=[
+                    AudioPadding(sample_rate=sample_rate, random_shift=True, max_length=sample_rate),
+                    time_shift(shift_limit=-.17, is_random=True, is_bidirection=False),
+                    a_transforms.MelSpectrogram(
+                        sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
+                        mel_scale=mel_scale
+                    ), # 80 x 104
+                    AmplitudeToDB(top_db=80., max_out=2.),
+                    MelSpectrogramPadding(target_length=args.target_length),
+                    FrequenceTokenTransformer()
+                ]),
+            ]
+        )
     shift_loader = DataLoader(
         dataset=shift_set, batch_size=args.batch_size, shuffle=True, drop_last=False, pin_memory=True,
         num_workers=args.num_workers
@@ -198,6 +229,20 @@ if __name__ == '__main__':
         test_set = SpeechCommandsDataset(
             root_path=args.dataset_root_path, mode='test', include_rate=False, data_type='all', 
             data_tfs=Components(transforms=[
+                AudioPadding(sample_rate=sample_rate, random_shift=False, max_length=sample_rate),
+                a_transforms.MelSpectrogram(
+                    sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
+                    mel_scale=mel_scale
+                ), # 80 x 104
+                AmplitudeToDB(top_db=80., max_out=2.),
+                MelSpectrogramPadding(target_length=args.target_length),
+                FrequenceTokenTransformer()
+            ])
+        )
+    elif args.dataset == 'speech-commands_v2':
+        test_set = SpeechCommandsV2(
+            root_path=args.dataset_root_path, mode='testing', folder_in_archive='speech-commands_v2', download=True,
+            data_tf=Components(transforms=[
                 AudioPadding(sample_rate=sample_rate, random_shift=False, max_length=sample_rate),
                 a_transforms.MelSpectrogram(
                     sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
