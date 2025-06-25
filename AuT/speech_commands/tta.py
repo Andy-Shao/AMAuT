@@ -159,12 +159,11 @@ if __name__ == '__main__':
     args.target_length=104
 
     if args.dataset == 'speech-commands':
-        org_set = SpeechCommandsDataset(
-            root_path=args.dataset_root_path, mode='test', include_rate=False, data_type='all', 
-            data_tfs=None
-        )
         shift_set = MultiTFDataset(
-            dataset=org_set, 
+            dataset=SpeechCommandsDataset(
+                root_path=args.dataset_root_path, mode='test', include_rate=False, data_type='all', 
+                data_tfs=None
+            ), 
             tfs=[
                 Components(transforms=[
                     AudioPadding(sample_rate=sample_rate, random_shift=True, max_length=sample_rate),
@@ -196,23 +195,21 @@ if __name__ == '__main__':
     )
 
     if args.dataset == 'speech-commands':
-        test_set = MultiTFDataset(
-            dataset=org_set,
-            tfs=[
-                Components(transforms=[
-                    AudioPadding(sample_rate=sample_rate, random_shift=False, max_length=sample_rate),
-                    a_transforms.MelSpectrogram(
-                        sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
-                        mel_scale=mel_scale
-                    ), # 80 x 104
-                    AmplitudeToDB(top_db=80., max_out=2.),
-                    MelSpectrogramPadding(target_length=args.target_length),
-                    FrequenceTokenTransformer()
-                ]),
-            ]
+        test_set = SpeechCommandsDataset(
+            root_path=args.dataset_root_path, mode='test', include_rate=False, data_type='all', 
+            data_tfs=Components(transforms=[
+                AudioPadding(sample_rate=sample_rate, random_shift=False, max_length=sample_rate),
+                a_transforms.MelSpectrogram(
+                    sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
+                    mel_scale=mel_scale
+                ), # 80 x 104
+                AmplitudeToDB(top_db=80., max_out=2.),
+                MelSpectrogramPadding(target_length=args.target_length),
+                FrequenceTokenTransformer()
+            ])
         )
     test_loader = DataLoader(
-        dataset=test_set, batch_size=args.batch_size, shuffle=False, drop_last=False, pin_memory=True,
+        dataset=test_set, batch_size=32, shuffle=False, drop_last=False, pin_memory=True,
         num_workers=args.num_workers
     )
 
