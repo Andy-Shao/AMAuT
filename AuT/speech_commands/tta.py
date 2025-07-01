@@ -193,11 +193,10 @@ if __name__ == '__main__':
         shift_set = MultiTFDataset(
             dataset=SpeechCommandsV2(
                 root_path=args.dataset_root_path, mode='testing', folder_in_archive='speech-commands_v2', download=True,
-                data_tf=None, 
+                data_tf=AudioPadding(sample_rate=sample_rate, random_shift=False, max_length=sample_rate), 
             ),
             tfs=[
                 Components(transforms=[
-                    AudioPadding(sample_rate=sample_rate, random_shift=True, max_length=sample_rate),
                     time_shift(shift_limit=.17, is_random=True, is_bidirection=False),
                     a_transforms.MelSpectrogram(
                         sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
@@ -208,7 +207,6 @@ if __name__ == '__main__':
                     FrequenceTokenTransformer()
                 ]),
                 Components(transforms=[
-                    AudioPadding(sample_rate=sample_rate, random_shift=True, max_length=sample_rate),
                     time_shift(shift_limit=-.17, is_random=True, is_bidirection=False),
                     a_transforms.MelSpectrogram(
                         sample_rate=sample_rate, n_mels=args.n_mels, n_fft=n_fft, hop_length=hop_length, win_length=win_length,
