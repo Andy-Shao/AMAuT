@@ -6,6 +6,7 @@
 + **result**: training and analysis results
 
 ## Software Environment
+Machine image: nvidia/cuda:11.8.0-devel-ubuntu22.04
 ```shell
 conda create --name my-audio python=3.9 -y 
 conda activate my-audio
