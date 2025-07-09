@@ -1,4 +1,4 @@
-# Multiple Modality Audio Transformer (MMAuT) for Audio Classification
+# Augmentation-based Multiview Audio Transformer (AMAuT) Framework for Audio Classification
 
 ## Project Structure
 + **AuT**: the Audio Transformer framework
