@@ -1,7 +1,7 @@
 # Augmentation-based Multiview Audio Transformer (AMAuT) Framework for Audio Classification
 
 ## Project Structure
-+ **AuT**: the Audio Transformer framework
++ **AuT**: the Augmentation-based Multiview Audio Transformer framework
 + **lib**: library
 + **result**: training and analysis results
 
