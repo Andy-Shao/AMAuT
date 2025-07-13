@@ -23,7 +23,7 @@ conda install matplotlib==3.8.4 -y
 pip install wandb==0.17.1
 ```
 
-In some cloud platforms, such as [Google Cloud](https://console.cloud.google.com). You should install more:
+In some cloud platforms, such as [Google Cloud](https://cloud.google.com). You should install more:
 ```shell
 pip install soundfile
 ```
