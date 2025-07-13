@@ -48,6 +48,7 @@ ssh AuT/script/speech-commands/tta.sh
 ```
 
 ### Analysis
+[Trained weights](https://drive.google.com/file/d/1C6thnM4-zZhyxxTh-52TfDdxLIh_Xa1P/view?usp=drive_link) for training and test-time adaptation on SpeechCommands V2.
 ```shell
 ssh AuT/script/speech-commands/tta_analysis.sh
 ```
