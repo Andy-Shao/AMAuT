@@ -154,6 +154,9 @@ if __name__ == '__main__':
         args.dataset_type = 'all'
     elif args.dataset == 'speech-commands_v2':
         args.class_num = 35
+        data_path = os.path.join(args.dataset_root_path)
+        if not os.path.exists(data_path):
+            os.makedirs(data_path)
     else:
         raise Exception('No support!')
     args.device = 'cuda' if torch.cuda.is_available() else 'cpu'

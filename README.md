@@ -1,6 +1,6 @@
 # Augmentation-based Multiview Audio Transformer (AMAuT) Framework for Audio Classification
 ![Figure](./img/Full-arch.png)
-AMAuT does not require pre-trained model weights, a specific sample rate, or a specific audio length to overcome the limitations of pre-training models, such as [SSAST](https://doi.org/10.1609/aaai.v36i10.21315), [EAT](https://doi.org/10.48550/arXiv.2401.03497), [HuBERT](https://doi.org/10.1109/TASLP.2021.3122291), [Qwen-Audio](https://doi.org/10.48550/arXiv.2311.07919), and [Audio Flamingo](https://doi.org/10.48550/arXiv.2402.01831). To improve performance, AMAuT combines multiple techniques, including augmentation-based multiview, CLS + TAL token,  a new 1D CNN block (conv1 + conv7 + conv1), three ensemble learning refinements, and TTA. To the best of our knowledge, AMAuT presents prediction accuracies that are comparable to or surpass the state-of-the-art on AudioMNIST, SpeechCommands V1, SpeechCommands V2, VocalSound, and CochlScene. We support that the three refinements and TTA can be directly applied to other algorithms. 
+AMAuT does not require pre-trained model weights, a specific sample rate, or a specific audio length to overcome the limitations of pre-training models, such as [SSAST](https://doi.org/10.1609/aaai.v36i10.21315), [EAT](https://doi.org/10.48550/arXiv.2401.03497), [HuBERT](https://doi.org/10.1109/TASLP.2021.3122291), [Qwen-Audio](https://doi.org/10.48550/arXiv.2311.07919), and [Audio Flamingo](https://doi.org/10.48550/arXiv.2402.01831). To improve performance, AMAuT combines multiple techniques, including augmentation-based multiview, CLS + TAL token,  a new 1D CNN block (conv1 + conv7 + conv1), three ensemble learning refinements, and TTA. To the best of our knowledge, AMAuT presents prediction accuracies that are comparable to or surpass the state-of-the-art on [AudioMNIST](https://github.com/soerenab/AudioMNIST/tree/master), [SpeechCommands V1](https://research.google/blog/launching-the-speech-commands-dataset/), [SpeechCommands V2](https://research.google/blog/launching-the-speech-commands-dataset/), [VocalSound](https://sls.csail.mit.edu/downloads/vocalsound/), and [CochlScene](https://github.com/cochlearai/cochlscene). We support that the three refinements and TTA can be directly applied to other algorithms. 
 
 ## Project Structure
 + **AuT**: the Augmentation-based Multiview Audio Transformer framework
@@ -36,19 +36,16 @@ cd AMAuT
 ```shell
 ssh AuT/script/speech-commands/train.sh
 ```
-`Note`: Modify `--dataset_root_path` to your SpeechCommands V1 location. Modify `--background_path` to your SpeechCommands V1 location.
 
 ### Test-time Adaptation
 ```shell
 ssh AuT/script/speech-commands/tta.sh
 ```
-`Note`: Modify `--dataset_root_path` to your SpeechCommands V1 location.
 
 ### Analysis
 ```shell
 ssh AuT/script/speech-commands/tta_analysis.sh
 ```
-`Note`: Modify `--dataset_root_path` to your SpeechCommands V1 location.
 
 ## Dataset
 ### AudioMNIST
