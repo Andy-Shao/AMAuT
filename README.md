@@ -1,4 +1,6 @@
 # Augmentation-based Multiview Audio Transformer (AMAuT) Framework for Audio Classification
+![Figure](./img/Full-arch.png)
+AMAuT does not require pre-trained model weights, a specific sample rate, or a specific audio length to overcome the limitations of pre-training models, such as SSAST, EAT, HuBERT, Qwen-Audio, and Audio Flamingo. To improve performance, AMAuT combines multiple techniques, including augmentation-based multiview, CLS + TAL token,  a new 1D CNN block (conv1 + conv7 + conv1), three ensemble learning refinements, and TTA. To the best of our knowledge, AMAuT presents prediction accuracies that are comparable to or surpass the state-of-the-art on AudioMNIST, SpeechCommands V1, SpeechCommands V2, VocalSound, and CochlScene. We support that the three refinements and TTA can be directly applied to other algorithms. 
 
 ## Project Structure
 + **AuT**: the Augmentation-based Multiview Audio Transformer framework
@@ -8,8 +10,8 @@
 ## Software Environment
 Machine image: nvidia/cuda:11.8.0-devel-ubuntu22.04
 ```shell
-conda create --name my-audio python=3.9 -y 
-conda activate my-audio
+conda create --name AMAuT python=3.9 -y 
+conda activate AMAuT
 # CUDA 11.8
 conda install pytorch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 pytorch-cuda=11.8 -c pytorch -c nvidia -y
 conda install -y -c anaconda scipy==1.11.3
@@ -21,35 +23,34 @@ conda install jupyter -y
 conda install matplotlib==3.8.4 -y 
 pip install wandb==0.17.1
 ```
-<!--
-Analysis environment
-```shell
-conda create --name my-analysis python=3.9 -y
-conda activate my-analysis
-conda install conda-forge::tensorboard
-```-->
 
 ## Processing
-
 ### Preparing
 ```shell
 export BASE_PATH=${the parent directory of the project}
-conda activate my-audio
-cd Audio-Transform
+conda activate AMAuT
+cd AMAuT
 ```
 
 ### Training
 ```shell
 ssh AuT/script/speech-commands/train.sh
 ```
+`Note`: Modify `--dataset_root_path` to your SpeechCommands V1 location. Modify `--background_path` to your SpeechCommands V1 location.
+
+### Test-time Adaptation
+```shell
+ssh AuT/script/speech-commands/tta.sh
+```
+`Note`: Modify `--dataset_root_path` to your SpeechCommands V1 location.
 
 ### Analysis
 ```shell
 ssh AuT/script/speech-commands/tta_analysis.sh
 ```
+`Note`: Modify `--dataset_root_path` to your SpeechCommands V1 location.
 
 ## Dataset
-
 ### AudioMNIST
 This repository contains code and data used in Interpreting and Explaining Deep Neural Networks for Classifying Audio Signals. The dataset consists of 30,000 audio samples of spoken digits (0–9) from 60 different speakers. Additionally, it holds the audioMNIST_meta.txt, which provides meta information such as the gender or age of each speaker.
 
@@ -59,9 +60,10 @@ This repository contains code and data used in Interpreting and Explaining Deep 
 + Class Number: 10
 <!-- + sample data shape: [1, 14073 - 47998] -->
   
-[Audio MNIST Link](https://github.com/soerenab/AudioMNIST/tree/master)
+[Offical Audio MNIST Link](https://github.com/soerenab/AudioMNIST/tree/master)
+[Dataset Hosting Link](https://drive.google.com/file/d/1kq5_qCKRUTHmViDIziSRKPjW4fIoyT9u/view?usp=drive_link)
 
-### SpeechCommands v0.01
+### SpeechCommands V1
 The dataset (1.4 GB) has 65,000 one-second long utterances of 30 short words by thousands of different people, contributed by public members through the AIY website. This is a set of one-second .wav audio files, each containing a single spoken English word.
 
 In both versions, ten of them are used as commands by convention: "Yes", "No", "Up", "Down", "Left",
@@ -78,7 +80,7 @@ from unrecognized ones.
 [Speech Commands Dataset Link](https://research.google/blog/launching-the-speech-commands-dataset/)<br/>
 [Dataset Download Link](http://download.tensorflow.org/data/speech_commands_v0.01.tar.gz)
 
-### SpeechCommands v0.02
+### SpeechCommands V2
 Add five new words in the Dataset, such as, 'backward', 'forward', 'follow', 'learn', and 'visual'.
 
 + Sample size: 105829 (train: 84843, test: 11005, validation: 9981)
@@ -117,4 +119,4 @@ Cochl Acoustic Scene Dataset, or CochlScene, is a new acoustic scene dataset who
 ## Code Reference
 + [CoNMix](https://github.com/vcl-iisc/CoNMix/tree/master)
 + [TransUNet](https://github.com/Beckschen/TransUNet)
-+ [Test-time Adaptation on Audio Classification](https://github.com/Andy-Shao/Test-time-Adaptation-in-AC)
++ [TTA in Audio Classification](https://github.com/Andy-Shao/TTA-in-AC.git)
