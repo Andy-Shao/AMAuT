@@ -28,6 +28,7 @@ pip install wandb==0.17.1
 ### Preparing
 ```shell
 export BASE_PATH=${the parent directory of the project}
+git clone https://github.com/Andy-Shao/AMAuT.git
 conda activate AMAuT
 cd AMAuT
 ```
