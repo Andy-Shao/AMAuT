@@ -77,7 +77,7 @@ from unrecognized ones.
 + Sample size: 64721 (train: 51088, test: 6835, validation: 6798)
 + Sampling rate: 16000
 <!-- + Sample data shape: [1, 5945 - 16000] -->
-+ Class Number: 30
++ Class number: 30
 + Audio length: 1 second
 
 [Speech Commands Dataset Link](https://research.google/blog/launching-the-speech-commands-dataset/)<br/>
@@ -88,7 +88,7 @@ Add five new words to the Dataset, such as 'backward', 'forward', 'follow', 'lea
 
 + Sample size: 105829 (train: 84843, test: 11005, validation: 9981)
 + Sampling rate: 16000
-+ Class Number: 35
++ Class number: 35
 + Audio length: 1 second
   
 [Speech Commands Dataset Link](https://research.google/blog/launching-the-speech-commands-dataset/)<br/>
@@ -114,7 +114,7 @@ Cochl Acoustic Scene Dataset, or CochlScene, is a new acoustic scene dataset who
 + Sample rate: 44100
 + Sample size: 76115 (Train: 60855, validation: 7573, test: 7687)
 + Audio length: 10 seconds
-+ Class Number: 13
++ Class number: 13
 
 [Github Link](https://github.com/cochlearai/cochlscene)<br/>
 [Dataset Link](https://zenodo.org/records/7080122)
