@@ -67,10 +67,10 @@ This repository contains code and data used in Interpreting and Explaining Deep 
 [Dataset Hosting Link](https://drive.google.com/file/d/1kq5_qCKRUTHmViDIziSRKPjW4fIoyT9u/view?usp=drive_link)
 
 ### SpeechCommands V1
-The dataset (1.4 GB) has 65,000 one-second long utterances of 30 short words by thousands of different people, contributed by public members through the AIY website. This is a set of one-second .wav audio files, each containing a single spoken English word.
+The dataset (1.4 GB) comprises 65,000 one-second-long utterances of 30 short words, contributed by thousands of different people through the AIY website. This is a set of one-second .wav audio files, each containing a single spoken English word.
 
 In both versions, ten of them are used as commands by convention: "Yes", "No", "Up", "Down", "Left",
-"Right", "On", "Off", "Stop", "Go". Other words are considered to be auxiliary (in the current implementation
+"Right", "On", "Off", "Stop", "Go". Other words are considered to be auxiliary (in the current implementation,
 it is marked by the `True` value of `the "is_unknown"` feature). Their function is to teach a model to distinguish core words
 from unrecognized ones.
 
@@ -84,7 +84,7 @@ from unrecognized ones.
 [Dataset Download Link](http://download.tensorflow.org/data/speech_commands_v0.01.tar.gz)
 
 ### SpeechCommands V2
-Add five new words in the Dataset, such as, 'backward', 'forward', 'follow', 'learn', and 'visual'.
+Add five new words to the Dataset, such as 'backward', 'forward', 'follow', 'learn', and 'visual'.
 
 + Sample size: 105829 (train: 84843, test: 11005, validation: 9981)
 + Sampling rate: 16000
@@ -109,7 +109,7 @@ wget -O vocalsound_16k.zip https://www.dropbox.com/s/c5ace70qh1vbyzb/vs_release_
 ```
 
 ### CochlScene
-Cochl Acoustic Scene Dataset, or CochlScene, is a new acoustic scene dataset whose recordings are fully collected from crowdsourcing participants. Most of the initial plans and guidelines for the processes were provided by the researchers in the field of audio signal processing and machine learning including the authors, and the actual process was performed by using the crowdsourcing platform developed by SelectStar, a Korean crowdsourcing data company. During the process, the initial plans were reinforced and modified from the discussion about the actual difficulty in the collection process. After extracting the subset of the total collections considering the purpose of the data, we collected 76,115 10 seconds files in 13 different acoustic scenes from 831 participants.
+Cochl Acoustic Scene Dataset, or CochlScene, is a new acoustic scene dataset whose recordings are fully collected from crowdsourcing participants. Most of the initial plans and guidelines for the processes were provided by researchers in the field of audio signal processing and machine learning, including the authors. The actual process was performed using a crowdsourcing platform developed by SelectStar, a Korean crowdsourcing data company. During the process, the initial plans were reinforced and modified based on the discussion about the actual difficulties in the collection process. After extracting a subset of the total collections based on the data's purpose, we collected 76,115 10-second files from 13 different acoustic scenes involving 831 participants.
 
 + Sample rate: 44100
 + Sample size: 76115 (Train: 60855, validation: 7573, test: 7687)
