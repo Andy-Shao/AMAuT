@@ -63,7 +63,7 @@ This repository contains code and data used in Interpreting and Explaining Deep 
 + Class Number: 10
 <!-- + sample data shape: [1, 14073 - 47998] -->
   
-[Official Audio MNIST Link](https://github.com/soerenab/AudioMNIST/tree/master)<br/>
+[Official AudioMNIST Link](https://github.com/soerenab/AudioMNIST/tree/master)<br/>
 [Dataset Hosting Link](https://drive.google.com/file/d/1kq5_qCKRUTHmViDIziSRKPjW4fIoyT9u/view?usp=drive_link)
 
 ### SpeechCommands V1
@@ -123,3 +123,4 @@ Cochl Acoustic Scene Dataset, or CochlScene, is a new acoustic scene dataset who
 + [CoNMix](https://github.com/vcl-iisc/CoNMix/tree/master)
 + [TransUNet](https://github.com/Beckschen/TransUNet)
 + [TTA in Audio Classification](https://github.com/Andy-Shao/TTA-in-AC.git)
++ [AudioMNIST](https://github.com/soerenab/AudioMNIST/tree/master)
