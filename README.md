@@ -78,7 +78,7 @@ from unrecognized ones.
 + Sampling rate: 16000
 <!-- + Sample data shape: [1, 5945 - 16000] -->
 + Class number: 30
-+ Audio length: 1 second
++ One sample length: 1 second
 
 [Speech Commands Dataset Link](https://research.google/blog/launching-the-speech-commands-dataset/)<br/>
 [Dataset Download Link](http://download.tensorflow.org/data/speech_commands_v0.01.tar.gz)
@@ -89,7 +89,7 @@ Add five new words to the Dataset, such as 'backward', 'forward', 'follow', 'lea
 + Sample size: 105829 (train: 84843, test: 11005, validation: 9981)
 + Sampling rate: 16000
 + Class number: 35
-+ Audio length: 1 second
++ One sample length: 1 second
   
 [Speech Commands Dataset Link](https://research.google/blog/launching-the-speech-commands-dataset/)<br/>
 [Pytorch Document](https://pytorch.org/audio/main/generated/torchaudio.datasets.SPEECHCOMMANDS.html)
@@ -99,7 +99,7 @@ VocalSound is a free dataset consisting of 21,024 crowdsourced recordings of lau
 
 + Sample Size: 20977 (Train: 15531, validation: 1855, test: 3591)
 + Sample rate: 16000
-+ Audio length: less than 12 seconds
++ One sample length: less than 12 seconds
 + Class number: 6
 
 [VocalSound Dataset Link](https://sls.csail.mit.edu/downloads/vocalsound/)<br/>
@@ -113,7 +113,7 @@ Cochl Acoustic Scene Dataset, or CochlScene, is a new acoustic scene dataset who
 
 + Sample rate: 44100
 + Sample size: 76115 (Train: 60855, validation: 7573, test: 7687)
-+ Audio length: 10 seconds
++ One sample length: 10 seconds
 + Class number: 13
 
 [Github Link](https://github.com/cochlearai/cochlscene)<br/>
