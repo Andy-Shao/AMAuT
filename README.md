@@ -8,7 +8,7 @@ Foundational models such as [SSAST](https://doi.org/10.1609/aaai.v36i10.21315), 
 + **result**: training and analysis results
 
 ## Software Environment
-Machine image: nvidia/cuda:11.8.0-devel-ubuntu22.04
+Docker image: nvidia/cuda:11.8.0-devel-ubuntu22.04
 ```shell
 conda create --name AMAuT python=3.9 -y 
 conda activate AMAuT
