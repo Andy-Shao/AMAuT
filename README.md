@@ -1,4 +1,4 @@
-# Augmentation-based Multiview Audio Transformer (AMAuT) Framework for Audio Classification
+# AMAuT: A Flexible and Efficient Multiview Audio Transformer Framework Trained from Scratch
 ![Figure](./img/Training.png)
 ![Figure](./img/Validation.png)
 <!--
