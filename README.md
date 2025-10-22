@@ -31,6 +31,11 @@ In some cloud platforms, such as [Google Cloud](https://cloud.google.com). You s
 pip install soundfile
 ```
 
+For consistency analysis
+```shell
+conda install scikit-learn==1.6.1 -y
+```
+
 ## Processing
 ### Preparing
 ```shell
