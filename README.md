@@ -61,6 +61,11 @@ ssh AuT/script/speech-commands/tta.sh
 ssh AuT/script/speech-commands/tta_analysis.sh
 ```
 
+### Consistency analysis
+```shell
+ssh AuT/script/speech-commands/cons_analy.sh
+```
+
 ## Dataset
 ### AudioMNIST
 This repository contains code and data used in Interpreting and Explaining Deep Neural Networks for Classifying Audio Signals. The dataset consists of 30,000 audio samples of spoken digits (0–9) from 60 different speakers. Additionally, it holds the audioMNIST_meta.txt, which provides meta information such as the gender or age of each speaker.
