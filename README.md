@@ -61,7 +61,7 @@ ssh AuT/script/speech-commands/tta.sh
 ssh AuT/script/speech-commands/tta_analysis.sh
 ```
 
-### Consistency analysis
+### Consistency Analysis
 ```shell
 ssh AuT/script/speech-commands/cons_analy.sh
 ```
