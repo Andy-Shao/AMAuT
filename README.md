@@ -138,3 +138,13 @@ Cochl Acoustic Scene Dataset, or CochlScene, is a new acoustic scene dataset who
 + [TransUNet](https://github.com/Beckschen/TransUNet)
 + [TTA in Audio Classification](https://github.com/Andy-Shao/TTA-in-AC.git)
 + [AudioMNIST](https://github.com/soerenab/AudioMNIST/tree/master)
+
+## Citation
+```text
+@article{shao2025amaut,
+  title={AMAuT: A Flexible and Efficient Multiview Audio Transformer Framework Trained from Scratch},
+  author={Shao, Weichuang and Liao, Iman Yi and Maul, Tomas Henrique Bode and Chandesa, Tissa},
+  journal={arXiv preprint arXiv:2510.19368},
+  year={2025}
+}
+```
